@@ -1,0 +1,25 @@
+next.user-config.*
+
+# Environment variables
+.env
+.env*.local
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python / backend
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+
+# Legacy / OS
+.next/
+.DS_Store
