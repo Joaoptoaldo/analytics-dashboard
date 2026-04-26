@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useDashboard } from '../hooks/use-dashboard'
+import { useMemo, useState } from 'react' 
+import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
@@ -287,7 +287,7 @@ export default function Dashboard() {
                   </TableCell>
                 </TableRow>
               )}
-              {productsItems.map((item: any) => (
+              {productsItems.map((item: ProductItem) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.id}</TableCell>
                   <TableCell>{item.client}</TableCell>

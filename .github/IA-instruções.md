@@ -35,6 +35,8 @@ Observações importantes:
 * O projeto **não está em JavaScript puro**; a base atual usa TypeScript.
 * Há arquivos residuais em `app/` que vieram de uma estrutura inspirada em Next.js, mas o entrypoint real hoje é o Vite em `src/main.tsx`.
 * A UI principal atual está concentrada em `src/App.tsx` e `src/Dashboard.tsx`.
+* O CSS global ativo está sendo importado de `app/globals.css` em `src/main.tsx`.
+* Ainda existem duplicações utilitárias e arquivos legados que devem ser tratados com cuidado antes de qualquer limpeza estrutural.
 
 ## Backend atual
 
@@ -74,6 +76,7 @@ Hoje o projeto já entrega:
 * ordenação na tabela
 * consumo de API com SWR
 * seed mock consistente para demonstração
+* contrato frontend/backend funcional via endpoints FastAPI
 
 ## O que ainda é objetivo de evolução
 
@@ -126,7 +129,7 @@ dashboard-de-analise/
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
-└── TODO.md
+└── README.md
 ```
 
 ---
@@ -174,6 +177,7 @@ Autorizações válidas:
 * corrija de forma didática
 * explique a causa raiz
 * me ajude a evitar repetir o erro
+* mostre como a correção se encaixa na arquitetura geral
 
 ---
 
@@ -193,6 +197,7 @@ Autorizações válidas:
 * preferir componentização clara quando isso realmente melhorar manutenção
 * não criar páginas falsas só para parecer completo
 * filtros devem continuar sendo reais, não decorativos
+* tratar `app/` como resíduo de transição até que haja decisão explícita de remover ou reaproveitar essa estrutura
 
 ## Sobre backend
 
@@ -206,6 +211,7 @@ Autorizações válidas:
 * sempre atualizar docs quando a implementação mudar de direção
 * nunca descrever como “pronto” algo que ainda é apenas objetivo futuro
 * diferenciar claramente visão do produto versus código já implementado
+* não citar arquivos, módulos ou fluxos que não existam mais no repositório atual
 
 ---
 

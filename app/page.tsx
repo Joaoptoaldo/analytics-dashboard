@@ -2,8 +2,6 @@
 
 import * as React from 'react'
 import { SidebarInset, SidebarTrigger } from '../components/ui/sidebar'
-import { Button } from '../components/ui/button'
-import { PanelLeftIcon } from 'lucide-react'
 import { useToast } from '../hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 

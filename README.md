@@ -34,6 +34,7 @@ O repositorio ja possui um MVP funcional com:
 * seed mock em memoria para demonstracao
 
 O frontend principal esta em `src/` e o backend atual esta concentrado em `backend/main.py`.
+O CSS global atualmente carregado pelo frontend esta em `app/globals.css`, embora ainda existam arquivos duplicados legados a serem limpos.
 
 ## Estrutura principal
 
@@ -52,7 +53,7 @@ O frontend principal esta em `src/` e o backend atual esta concentrado em `backe
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
-└── TODO.md
+└── README.md
 ```
 
 ## Como rodar
