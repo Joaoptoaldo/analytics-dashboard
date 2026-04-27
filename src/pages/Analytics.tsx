@@ -16,14 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDashboard } from '@/hooks/use-dashboard';
 
 
+
 export default function Analytics() {
-  
+  // Filtros simplificados para análise global
   const [period, setPeriod] = useState('all');
   const filters = useMemo(() => ({ period, category: 'all', region: 'all', status: 'all', search: '' }), [period]);
-  const tableParams = useMemo(() => ({ page: 1, pageSize: 100, sortBy: 'date', sortOrder: 'desc' as 'asc' | 'desc' }), []);
-  const { overview, sales, traffic, isLoading, error } = 
-  useDashboard(filters, tableParams);
-  
+  const tableParams = useMemo(() => ({ page: 1, pageSize: 50, sortBy: 'date', sortOrder: 'desc' as 'desc' | 'asc' }), []);
+  const { overview, sales, traffic, isLoading, error } = useDashboard(filters, tableParams);
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>;

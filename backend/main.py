@@ -5,6 +5,15 @@ import os
 import random
 from typing import Any
 
+# (.venv) PS C:\Users\user\Desktop\GERAL\CODIGOS\dashboard-de-analise> python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000               
+# INFO:     Will watch for changes in these directories: ['C:\\Users\\user\\Desktop\\GERAL\\CODIGOS\\dashboard-de-analise']
+# INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+# INFO:     Started reloader process [11548] using StatReload
+# ERROR:    Error loading ASGI app. Could not import module "main".
+
+#vamos concertar o erro de importação do módulo "main" e garantir que o aplicativo FastAPI seja criado corretamente. Aqui está o código corrigido:
+
+
 app = FastAPI(title="Analytics Dashboard API", version="1.0.0")
 
 # CORS configuration
