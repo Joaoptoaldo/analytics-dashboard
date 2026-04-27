@@ -1,5 +1,3 @@
-next.user-config.*
-
 # Environment variables
 .env
 .env*.local

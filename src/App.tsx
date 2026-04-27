@@ -1,11 +1,25 @@
 import { BarChart3, FileText, LayoutDashboard, Settings, Users } from 'lucide-react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from '../components/ui/sidebar';
+
 import Dashboard from './Dashboard';
 import Analytics from './pages/Analytics';
 import Reports from './pages/Reports';
 import SettingsPage from './pages/Settings';
 import UsersPage from './pages/Users';
+
+import { useEffect, useState } from 'react';
+
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debounced;
+}
 
 export default function App() {
   const navigate = useNavigate();

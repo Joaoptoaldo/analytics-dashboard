@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react' 
-import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
+import { useMemo, useState } from 'react'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
+import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
+import { useDebounce } from '../hooks/useDebounce'
+
 import {
   Select,
   SelectContent,
@@ -11,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select'
+
 import {
   Table,
   TableBody,
@@ -19,17 +22,18 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table'
+
 import {
-  LineChart,
+  CartesianGrid,
+  Cell,
   Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts'
 
 export default function Dashboard() {
@@ -42,15 +46,17 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
+
+  const debouncedSearch = useDebounce(search, 400);
   const filters = useMemo(
-    () => ({ period, category, region, status, search }),
-    [period, category, region, status, search],
-  )
+    () => ({ period, category, region, status, search: debouncedSearch }),
+    [period, category, region, status, debouncedSearch],
+  );
   const tableParams = useMemo(
     () => ({ page, pageSize: 8, sortBy, sortOrder }),
     [page, sortBy, sortOrder],
-  )
-  const { overview, sales, traffic, products, filterOptions, isLoading, error } = useDashboard(filters, tableParams)
+  );
+  const { overview, sales, traffic, products, filterOptions, isLoading, error } = useDashboard(filters, tableParams);
 
   const onFilterChange = (setter: (value: string) => void, value: string) => {
     setter(value)

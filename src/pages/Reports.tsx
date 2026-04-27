@@ -6,6 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDashboard, type ProductItem } from '@/hooks/use-dashboard';
 import { useMemo, useState } from 'react';
+import {
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 export default function Reports() {
   const [period, setPeriod] = useState('all');
@@ -19,7 +31,7 @@ export default function Reports() {
 
   const filters = useMemo(() => ({ period, category, region, status, search }), [period, category, region, status, search]);
   const tableParams = useMemo(() => ({ page, pageSize: 8, sortBy, sortOrder }), [page, sortBy, sortOrder]);
-  const { products, filterOptions, isLoading, error } = useDashboard(filters, tableParams);
+  const { products, filterOptions, isLoading, error, sales, traffic } = useDashboard(filters, tableParams);
 
   const onSortChange = (field: string) => {
     if (sortBy === field) {
@@ -119,6 +131,33 @@ export default function Reports() {
           <CardTitle>Relatórios de Produtos</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            <div className="h-48 bg-white">
+              <h3 className="text-sm font-medium mb-2">Receita por mês</h3>
+              <ResponsiveContainer width="100%" height={160}>
+                <LineChart data={sales || []} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="revenue" stroke="#4f46e5" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="h-48 bg-white">
+              <h3 className="text-sm font-medium mb-2">Tráfego por região</h3>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={traffic || []} dataKey="visitors" nameKey="source" outerRadius={60} fill="#82ca9d">
+                    {(traffic || []).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={["#60a5fa", "#f97316", "#34d399", "#f472b6", "#a78bfa"][index % 5]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
           {isLoading ? (
             <div className="py-12 text-center text-muted-foreground">Carregando...</div>
           ) : error ? (
