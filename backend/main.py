@@ -1,20 +1,24 @@
 from fastapi import FastAPI, Query
+from backend.routers.products import router as products_router
+from backend.routers.external import router as external_router
+from backend.db import init_db
+from backend.routers.external_sync import router as external_sync_router
+from backend.data import CATEGORIES, REGIONS, STATUSES, DATASET, _apply_filters
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import os
 import random
 from typing import Any
 
-# (.venv) PS C:\Users\user\Desktop\GERAL\CODIGOS\dashboard-de-analise> python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000               
-# INFO:     Will watch for changes in these directories: ['C:\\Users\\user\\Desktop\\GERAL\\CODIGOS\\dashboard-de-analise']
-# INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-# INFO:     Started reloader process [11548] using StatReload
-# ERROR:    Error loading ASGI app. Could not import module "main".
-
-#vamos concertar o erro de importação do módulo "main" e garantir que o aplicativo FastAPI seja criado corretamente. Aqui está o código corrigido:
 
 
 app = FastAPI(title="Analytics Dashboard API", version="1.0.0")
+app.include_router(products_router, prefix="/api")
+app.include_router(external_router, prefix="/api")
+app.include_router(external_sync_router, prefix="/api")
+
+
+init_db()
 
 # CORS configuration
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
@@ -29,64 +33,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-CATEGORIES = ["SaaS", "E-commerce", "Fintech", "Education", "Health"]
-REGIONS = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"]
-STATUSES = ["Completed", "Processing", "Shipped", "Pending"]
-CLIENTS = [
-    "Alfa Tech",
-    "Beta Commerce",
-    "NovaBank",
-    "EduPlus",
-    "VidaCare",
-    "Delta Systems",
-    "Prime Retail",
-    "CloudOps",
-    "SmartLabs",
-    "Pulse Group",
-]
+## Dados e constantes agora em backend.data
 
 
-def _build_seed_data() -> list[dict[str, Any]]:
-    rng = random.Random(42)
-    rows: list[dict[str, Any]] = []
-    start_date = datetime(2024, 1, 1)
 
-    for idx in range(1, 361):
-        date = start_date + timedelta(days=rng.randint(0, 364))
-        category = rng.choice(CATEGORIES)
-        status = rng.choice(STATUSES)
-
-        base_revenue = {
-            "SaaS": 2200,
-            "E-commerce": 1800,
-            "Fintech": 2600,
-            "Education": 1400,
-            "Health": 2000,
-        }[category]
-        status_multiplier = {
-            "Completed": 1.0,
-            "Shipped": 0.95,
-            "Processing": 0.82,
-            "Pending": 0.65,
-        }[status]
-
-        revenue = round((base_revenue + rng.uniform(-350, 950)) * status_multiplier, 2)
-
-        rows.append(
-            {
-                "id": idx,
-                "client": rng.choice(CLIENTS),
-                "category": category,
-                "revenue": max(revenue, 250.0),
-                "status": status,
-                "region": rng.choice(REGIONS),
-                "date": date.strftime("%Y-%m-%d"),
-            }
-        )
-    return rows
-
-
-DATASET = _build_seed_data()
 
 
 def _apply_filters(
@@ -247,37 +197,6 @@ async def get_traffic(
     return _build_traffic(filtered)
 
 
-@app.get("/api/products")
-async def get_products(
-    period: str = Query(default="all"),
-    category: str = Query(default="all"),
-    region: str = Query(default="all"),
-    status: str = Query(default="all"),
-    search: str = Query(default=""),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=8, ge=1, le=50),
-    sort_by: str = Query(default="date"),
-    sort_order: str = Query(default="desc"),
-):
-    filtered = _apply_filters(DATASET, period, category, region, status, search)
-    reverse = sort_order == "desc"
-    if sort_by in {"id", "client", "category", "revenue", "status", "region", "date"}:
-        filtered = sorted(filtered, key=lambda x: x[sort_by], reverse=reverse)
-
-    total = len(filtered)
-    total_pages = max((total + page_size - 1) // page_size, 1)
-    if page > total_pages:
-        page = total_pages
-    start = (page - 1) * page_size
-    items = filtered[start : start + page_size]
-
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": total_pages,
-    }
 
 
 @app.get("/api/filters")
