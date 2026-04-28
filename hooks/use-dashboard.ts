@@ -114,9 +114,12 @@ export function useDashboard(filters: DashboardFilters, tableParams: TableParams
     `/api/traffic?${baseQuery}`,
     () => fetcher<TrafficPoint[]>(`${API_BASE}/traffic?${baseQuery}`),
   )
+  const useExternal = import.meta.env.VITE_USE_EXTERNAL === 'true'
+  const productsPath = useExternal ? 'external-products' : 'products'
+
   const { data: products, error: productsError } = useSWR<ProductsResponse>(
-    `/api/products?${productsQuery}`,
-    () => fetcher<ProductsResponse>(`${API_BASE}/products?${productsQuery}`),
+    `/api/${productsPath}?${productsQuery}`,
+    () => fetcher<ProductsResponse>(`${API_BASE}/${productsPath}?${productsQuery}`),
   )
   const { data: filterOptions, error: filterOptionsError } = useSWR<FilterOptionsResponse>(
     '/api/filters',

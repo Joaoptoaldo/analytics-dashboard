@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
+import { useSWRConfig } from 'swr'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
@@ -57,6 +58,20 @@ export default function Dashboard() {
     [page, sortBy, sortOrder],
   );
   const { overview, sales, traffic, products, filterOptions, isLoading, error } = useDashboard(filters, tableParams);
+  const { mutate } = useSWRConfig()
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+
+  const onSyncExternal = async () => {
+    try {
+      await fetch(`${API_BASE}/external-products/sync`, { method: 'POST' })
+      // revalidate both possible cache keys
+      const productsQuery = `period=${filters.period}&category=${filters.category}&region=${filters.region}&status=${filters.status}&search=${filters.search}&page=${tableParams.page}&page_size=${tableParams.pageSize}&sort_by=${tableParams.sortBy}&sort_order=${tableParams.sortOrder}`
+      await mutate(`/api/external-products?${productsQuery}`)
+      await mutate(`/api/products?${productsQuery}`)
+    } catch (e) {
+      console.error('Sync failed', e)
+    }
+  }
 
   const onFilterChange = (setter: (value: string) => void, value: string) => {
     setter(value)
@@ -108,11 +123,14 @@ export default function Dashboard() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
             <CardTitle>Filtros</CardTitle>
-            <Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
-              Limpar filtros
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onSyncExternal}>Sincronizar API externa</Button>
+              <Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
+                Limpar filtros
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
