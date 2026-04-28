@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
+import { useSWRConfig } from 'swr'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
-import { useSWRConfig } from 'swr'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
@@ -123,7 +123,7 @@ export default function Dashboard() {
 
       <Card>
         <CardHeader>
-            <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <CardTitle>Filtros</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" onClick={onSyncExternal}>Sincronizar API externa</Button>
