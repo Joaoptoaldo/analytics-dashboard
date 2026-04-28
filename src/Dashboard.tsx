@@ -4,6 +4,7 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
+import { Spinner } from '../components/ui/spinner'
 import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
 import { useDebounce } from '../hooks/useDebounce'
 
@@ -61,15 +62,27 @@ export default function Dashboard() {
   const { mutate } = useSWRConfig()
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [syncSuccess, setSyncSuccess] = useState(false)
+
   const onSyncExternal = async () => {
+    setSyncLoading(true)
+    setSyncError(null)
+    setSyncSuccess(false)
     try {
-      await fetch(`${API_BASE}/external-products/sync`, { method: 'POST' })
+      const resp = await fetch(`${API_BASE}/external-products/sync`, { method: 'POST' })
+      if (!resp.ok) throw new Error('Erro ao sincronizar')
+      setSyncSuccess(true)
       // revalidate both possible cache keys
       const productsQuery = `period=${filters.period}&category=${filters.category}&region=${filters.region}&status=${filters.status}&search=${filters.search}&page=${tableParams.page}&page_size=${tableParams.pageSize}&sort_by=${tableParams.sortBy}&sort_order=${tableParams.sortOrder}`
       await mutate(`/api/external-products?${productsQuery}`)
       await mutate(`/api/products?${productsQuery}`)
-    } catch (e) {
-      console.error('Sync failed', e)
+    } catch (e: any) {
+      setSyncError(e?.message || 'Erro desconhecido')
+    } finally {
+      setSyncLoading(false)
+      setTimeout(() => setSyncSuccess(false), 2000)
     }
   }
 
@@ -126,7 +139,11 @@ export default function Dashboard() {
           <div className="flex items-center justify-between gap-3">
             <CardTitle>Filtros</CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={onSyncExternal}>Sincronizar API externa</Button>
+              <Button variant="outline" onClick={onSyncExternal} disabled={syncLoading}>
+                {syncLoading && <Spinner />}
+                {syncLoading ? 'Sincronizando...' : syncSuccess ? 'Sincronizado!' : 'Sincronizar API externa'}
+              </Button>
+              {syncError && <span className="text-xs text-destructive">{syncError}</span>}
               <Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
                 Limpar filtros
               </Button>
