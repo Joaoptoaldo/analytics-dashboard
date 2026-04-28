@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import os
 import random
 from typing import Any
+from backend.routers.products import router as products_router
 
 
 
