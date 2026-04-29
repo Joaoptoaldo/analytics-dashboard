@@ -1,4 +1,3 @@
-
 # Dashboard de Análise
 
 Dashboard full stack para análise de KPIs, filtros dinâmicos, gráficos e tabela de dados, com visual de produto SaaS e dados reais integrados.
@@ -164,3 +163,39 @@ Dúvidas? Veja o README-QUICKSTART.md ou abra uma issue.
 * separar melhor os componentes de dashboard
 * reduzir tamanho do bundle frontend
 * adicionar autenticacao e navegacao real
+
+
+## Testes Automatizados
+
+### Frontend (React)
+- Utiliza Jest + Testing Library para testes unitários e de componentes.
+- Scripts disponíveis:
+  - `npm run test` — executa todos os testes.
+  - `npm run test:watch` — executa testes em modo observação.
+- Exemplo de teste: veja `components/ui/ErrorMessage.test.tsx`.
+
+### Backend (FastAPI)
+- Recomenda-se usar `pytest` e `httpx` para testes de API.
+- Estrutura sugerida:
+  - Crie uma pasta `backend/tests/`.
+  - Exemplo de teste para endpoint:
+
+```python
+# backend/tests/test_products.py
+from fastapi.testclient import TestClient
+from backend.main import app
+
+def test_get_products():
+    client = TestClient(app)
+    response = client.get("/api/products")
+    assert response.status_code == 200
+    assert "items" in response.json()
+```
+- Para rodar:
+```bash
+cd backend
+pytest
+```
+
+## Variáveis de ambiente
+Veja `.env.example` para todas as variáveis necessárias. Sempre mantenha seu `.env` atualizado e nunca faça commit dele.
