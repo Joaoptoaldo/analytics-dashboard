@@ -1,21 +1,58 @@
-from backend.data import _apply_filters, DATASET
 from backend.schemas.products import ProductsResponse, ProductItem
+from backend.db import SessionLocal
+from backend.models.product import Product
+from sqlalchemy import or_, desc, asc
+from datetime import datetime, timedelta
 
 def get_products_service(period, category, region, status, search, page, page_size, sort_by, sort_order):
-    filtered = _apply_filters(DATASET, period, category, region, status, search)
-    reverse = sort_order == "desc"
-    if sort_by in {"id", "client", "category", "revenue", "status", "region", "date"}:
-        filtered = sorted(filtered, key=lambda x: x[sort_by], reverse=reverse)
-    total = len(filtered)
-    total_pages = max((total + page_size - 1) // page_size, 1)
-    if page > total_pages:
-        page = total_pages
-    start = (page - 1) * page_size
-    items = filtered[start : start + page_size]
-    return ProductsResponse(
-        items=[ProductItem(**item) for item in items],
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages,
-    )
+    db = SessionLocal()
+    try:
+        query = db.query(Product)
+
+        # Filtros
+        if period != "all":
+            days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
+            days = days_map.get(period, 365)
+            min_date = datetime.now().date() - timedelta(days=days)
+            query = query.filter(Product.date >= min_date)
+        if category != "all":
+            query = query.filter(Product.category == category)
+        if region != "all":
+            query = query.filter(Product.region == region)
+        if status != "all":
+            query = query.filter(Product.status == status)
+        if search:
+            search_term = f"%{search.strip().lower()}%"
+            query = query.filter(
+                or_(
+                    Product.client.ilike(search_term),
+                    Product.category.ilike(search_term),
+                    Product.region.ilike(search_term),
+                )
+            )
+
+        # Ordenação
+        sort_attr = getattr(Product, sort_by, Product.date)
+        if sort_order == "desc":
+            query = query.order_by(desc(sort_attr))
+        else:
+            query = query.order_by(asc(sort_attr))
+
+        # Paginação
+        total = query.count()
+        total_pages = max((total + page_size - 1) // page_size, 1)
+        if page > total_pages:
+            page = total_pages
+        if page < 1:
+            page = 1
+        items = query.offset((page - 1) * page_size).limit(page_size).all()
+
+        return ProductsResponse(
+            items=[ProductItem(**p.to_dict()) for p in items],
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+    finally:
+        db.close()

@@ -6,7 +6,9 @@ from backend.routers.products import router as products_router
 from backend.routers.external import router as external_router
 from backend.db import init_db
 from backend.routers.external_sync import router as external_sync_router
-from backend.data import CATEGORIES, REGIONS, STATUSES, DATASET, _apply_filters
+from backend.data import CATEGORIES, REGIONS, STATUSES
+from backend.db import SessionLocal
+from backend.models.product import Product
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import os
@@ -24,7 +26,7 @@ app.include_router(external_sync_router, prefix="/api")
 
 init_db()
 
-# CORS configuration
+# CORS config
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()] 
 
@@ -38,9 +40,6 @@ app.add_middleware(
 )
 
 ## Dados e constantes agora em backend.data
-
-
-
 
 
 def _apply_filters(
@@ -107,20 +106,16 @@ def _build_overview(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _build_sales(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    month_keys = [
-        "Jan 2024",
-        "Feb 2024",
-        "Mar 2024",
-        "Apr 2024",
-        "May 2024",
-        "Jun 2024",
-        "Jul 2024",
-        "Aug 2024",
-        "Sep 2024",
-        "Oct 2024",
-        "Nov 2024",
-        "Dec 2024",
-    ]
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+
+    # Gera os últimos 12 meses a partir do mês atual
+    today = datetime.now()
+    month_keys = []
+    for i in range(11, -1, -1):
+        d = today - relativedelta(months=i)
+        month_keys.append(d.strftime("%b %Y"))
+
     month_data: dict[str, dict[str, Any]] = {
         m: {"month": m, "revenue": 0.0, "orders": 0, "customers_set": set()} for m in month_keys
     }
@@ -165,6 +160,7 @@ async def root():
     return {"message": "Analytics Dashboard API", "version": "1.0.0"}
 
 
+
 @app.get("/api/overview")
 async def get_overview(
     period: str = Query(default="all"),
@@ -173,8 +169,36 @@ async def get_overview(
     status: str = Query(default="all"),
     search: str = Query(default=""),
 ):
-    filtered = _apply_filters(DATASET, period, category, region, status, search)
-    return _build_overview(filtered)
+    db = SessionLocal()
+    try:
+        from sqlalchemy import or_
+        from datetime import datetime, timedelta
+        query = db.query(Product)
+        if period != "all":
+            days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
+            days = days_map.get(period, 365)
+            min_date = datetime.now().date() - timedelta(days=days)
+            query = query.filter(Product.date >= min_date)
+        if category != "all":
+            query = query.filter(Product.category == category)
+        if region != "all":
+            query = query.filter(Product.region == region)
+        if status != "all":
+            query = query.filter(Product.status == status)
+        if search:
+            search_term = f"%{search.strip().lower()}%"
+            query = query.filter(
+                or_(
+                    Product.client.ilike(search_term),
+                    Product.category.ilike(search_term),
+                    Product.region.ilike(search_term),
+                )
+            )
+        rows = [p.to_dict() for p in query.all()]
+        return _build_overview(rows)
+    finally:
+        db.close()
+
 
 
 @app.get("/api/sales")
@@ -185,8 +209,36 @@ async def get_sales(
     status: str = Query(default="all"),
     search: str = Query(default=""),
 ):
-    filtered = _apply_filters(DATASET, period, category, region, status, search)
-    return _build_sales(filtered)
+    db = SessionLocal()
+    try:
+        from sqlalchemy import or_
+        from datetime import datetime, timedelta
+        query = db.query(Product)
+        if period != "all":
+            days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
+            days = days_map.get(period, 365)
+            min_date = datetime.now().date() - timedelta(days=days)
+            query = query.filter(Product.date >= min_date)
+        if category != "all":
+            query = query.filter(Product.category == category)
+        if region != "all":
+            query = query.filter(Product.region == region)
+        if status != "all":
+            query = query.filter(Product.status == status)
+        if search:
+            search_term = f"%{search.strip().lower()}%"
+            query = query.filter(
+                or_(
+                    Product.client.ilike(search_term),
+                    Product.category.ilike(search_term),
+                    Product.region.ilike(search_term),
+                )
+            )
+        rows = [p.to_dict() for p in query.all()]
+        return _build_sales(rows)
+    finally:
+        db.close()
+
 
 
 @app.get("/api/traffic")
@@ -197,8 +249,35 @@ async def get_traffic(
     status: str = Query(default="all"),
     search: str = Query(default=""),
 ):
-    filtered = _apply_filters(DATASET, period, category, region, status, search)
-    return _build_traffic(filtered)
+    db = SessionLocal()
+    try:
+        from sqlalchemy import or_
+        from datetime import datetime, timedelta
+        query = db.query(Product)
+        if period != "all":
+            days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
+            days = days_map.get(period, 365)
+            min_date = datetime.now().date() - timedelta(days=days)
+            query = query.filter(Product.date >= min_date)
+        if category != "all":
+            query = query.filter(Product.category == category)
+        if region != "all":
+            query = query.filter(Product.region == region)
+        if status != "all":
+            query = query.filter(Product.status == status)
+        if search:
+            search_term = f"%{search.strip().lower()}%"
+            query = query.filter(
+                or_(
+                    Product.client.ilike(search_term),
+                    Product.category.ilike(search_term),
+                    Product.region.ilike(search_term),
+                )
+            )
+        rows = [p.to_dict() for p in query.all()]
+        return _build_traffic(rows)
+    finally:
+        db.close()
 
 
 

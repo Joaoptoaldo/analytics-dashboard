@@ -23,12 +23,16 @@ def fetch_external_products() -> List[Dict[str, Any]]:
     regions = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"]
     statuses = ["Completed", "Processing", "Shipped", "Pending"]
     rows: List[Dict[str, Any]] = []
-    base_date = datetime.utcnow()
+    start_2024 = datetime(2024, 1, 1)
+    end_2024 = datetime(2024, 12, 31)
+    days_range = (end_2024 - start_2024).days
     for item in products:
         try:
             revenue = float(item.get("price", 0.0))
         except Exception:
             revenue = 0.0
+        random_day = rng.randint(0, days_range)
+        date_2024 = start_2024 + timedelta(days=random_day)
         rows.append({
             "id": int(item.get("id", 0)),
             "client": item.get("title", "")[:255],
@@ -36,7 +40,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
             "revenue": revenue,
             "status": rng.choice(statuses),
             "region": rng.choice(regions),
-            "date": (base_date - timedelta(days=rng.randint(0, 365))).strftime("%Y-%m-%d"),
+            "date": date_2024.strftime("%Y-%m-%d"),
         })
     return rows
 

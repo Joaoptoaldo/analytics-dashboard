@@ -19,6 +19,11 @@ import {
   YAxis,
 } from 'recharts';
 
+export const metadata = {
+  title: 'Relatórios',
+  description: 'Visualize e analise os relatórios de vendas, tráfego e desempenho dos produtos.',
+};
+
 export default function Reports() {
   const [period, setPeriod] = useState('all');
   const [category, setCategory] = useState('all');
