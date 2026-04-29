@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { useSWRConfig } from 'swr'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -117,7 +118,9 @@ export default function Dashboard() {
   }
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>
-  if (error) return <div className="flex h-screen items-center justify-center">Erro ao carregar dashboard.</div>
+  if (error) return (
+    <ErrorMessage message={error.message || 'Erro ao carregar dashboard.'} onRetry={() => window.location.reload()} />
+  )
 
   const periodOptions = filterOptions?.periods || []
   const categories = filterOptions?.categories || []

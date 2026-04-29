@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -166,7 +167,7 @@ export default function Reports() {
           {isLoading ? (
             <div className="py-12 text-center text-muted-foreground">Carregando...</div>
           ) : error ? (
-            <div className="py-12 text-center text-destructive">Erro ao carregar relatórios.</div>
+            <ErrorMessage message={error.message || 'Erro ao carregar relatórios.'} onRetry={() => window.location.reload()} />
           ) : (
             <div className="overflow-x-auto">
               <Table>

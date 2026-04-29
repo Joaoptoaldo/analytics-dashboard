@@ -54,10 +54,9 @@ Arquivos principais atuais:
 
 Observações importantes:
 
-* O backend atual ainda está concentrado em um único arquivo.
-* Os dados são seedados em memória.
-* Ainda não existe persistência real com SQLite/SQLAlchemy.
-* A arquitetura com `routers/`, `models/`, `schemas/` e `services/` continua sendo um alvo futuro, não o estado atual.
+* O backend estava originalmente concentrado em um único arquivo, mas foi evoluindo: hoje já existe integração com `models/`, `services/` e `routers/` e uso de SQLAlchemy para persistência.
+* Produtos externos podem ser sincronizados e persistidos em SQLite através do endpoint `POST /api/external-products/sync`.
+* A base foi atualizada para que dados apresentados no dashboard venham do banco, não mais de um dataset em memória. Ao trabalhar com o backend, preserve compatibilidade com os endpoints existentes.
 
 ---
 
@@ -80,16 +79,14 @@ Hoje o projeto já entrega:
 
 ## O que ainda é objetivo de evolução
 
-Evoluções planejadas:
+Evoluções planejadas (prioritárias):
 
-* modularizar o backend
-* introduzir persistência real com SQLite
-* preparar a transição futura para PostgreSQL
-* separar melhor os componentes de dashboard
-* adicionar autenticação real
-* criar páginas/módulos além da dashboard principal
+* consolidar a modularização do backend (rotas, services, modelos separados)
+* preparar migração para PostgreSQL a partir de uma camada de acesso bem definida
+* separar melhor os componentes de dashboard e reduzir duplicações
+* adicionar autenticação e autorização
 * melhorar performance do bundle frontend
-* fortalecer documentação e setup
+* fortalecer documentação e testes automatizados
 
 ---
 
@@ -203,8 +200,8 @@ Autorizações válidas:
 
 * manter compatibilidade com o contrato atual consumido pelo frontend
 * evitar quebrar endpoints existentes sem avisar antes
-* tratar seed mock como solução temporária de MVP
-* quando propor persistência, priorizar SQLite primeiro e arquitetura migrável depois
+* o seed mock foi substituído progressivamente por persistência (SQLite + SQLAlchemy). Ao propor mudanças, documente o impacto e migrações necessárias
+* quando propor persistência adicional, priorizar soluções que facilitem migração para bancos gerenciados
 
 ## Sobre documentação
 
@@ -261,3 +258,5 @@ Ao sugerir próximos passos, priorize:
 * manutenção futura
 * clareza para portfólio profissional
 * progressão incremental sem quebrar o MVP atual
+* comunicação clara sobre o que é código real versus objetivo futuro
+* sempre destacar o impacto e tradeoffs de cada mudança proposta

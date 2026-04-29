@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
   CartesianGrid,
   Cell,
@@ -26,7 +27,7 @@ export default function Analytics() {
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>;
-  if (error) return <div className="flex h-screen items-center justify-center">Erro ao carregar analytics.</div>;
+  if (error) return <ErrorMessage message={error.message || 'Erro ao carregar analytics.'} onRetry={() => window.location.reload()} />;
 
   return (
     <div className="p-8 space-y-6">

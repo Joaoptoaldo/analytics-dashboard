@@ -64,7 +64,7 @@ O frontend está em `src/` e o backend modularizado em `backend/`.
 - pnpm (ou npm/yarn)
 
 ### 2. Variáveis de ambiente
-Crie um arquivo `.env` na raiz:
+Crie um arquivo `.env` na raiz com as variáveis mínimas:
 
 ```
 VITE_API_BASE_URL=http://localhost:8000/api
@@ -94,15 +94,41 @@ pip install -r requirements.txt  # ou use pyproject.toml
 #### Backend (FastAPI)
 ```bash
 cd backend
-uvicorn main:app --reload
+uvicorn backend.main:app --reload
 ```
-A API estará em http://localhost:8000/api
+A API estará em `http://localhost:8000`
 
 #### Frontend (Vite)
 ```bash
 pnpm run dev
 ```
-Acesse http://localhost:5173 (ou porta sugerida pelo Vite)
+Acesse `http://localhost:5173` (ou porta sugerida pelo Vite)
+
+### 5. Comandos úteis para dados reais
+
+- Fazer backup do banco local antes de alterações:
+```powershell
+copy .\backend.db .\backend.db.bak
+```
+- Limpar a tabela `products` (opcional):
+```powershell
+sqlite3 backend.db "DELETE FROM products;"
+sqlite3 backend.db "VACUUM;"
+```
+- Sincronizar produtos externos (popula banco):
+```powershell
+curl -X POST http://127.0.0.1:8000/api/external-products/sync
+```
+- Verificar contagem e soma de receita no DB:
+```powershell
+sqlite3 backend.db "SELECT COUNT(*), ROUND(SUM(revenue),2) FROM products;"
+```
+- Checar endpoint de vendas:
+```powershell
+curl http://127.0.0.1:8000/api/sales
+```
+
+> Observação: O backend agora persiste produtos no banco (SQLite via SQLAlchemy). A sincronização gera datas dentro dos últimos 365 dias para manter o dashboard atualizado dinamicamente.
 
 
 ## Principais Endpoints
