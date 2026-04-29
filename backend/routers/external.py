@@ -12,10 +12,8 @@ def get_external_products(
     sort_by: str = Query(default="date"),
     sort_order: str = Query(default="desc"),
 ):
-    # Prefer persisted data when available
+    # Retorna apenas dados persistidos; só haverá dados após sincronização manual
     rows = get_persisted_products()
-    if not rows:
-        rows = fetch_external_products()
     reverse = sort_order == "desc"
     if sort_by in {"id", "client", "category", "revenue", "status", "region", "date"}:
         rows = sorted(rows, key=lambda x: x[sort_by], reverse=reverse)

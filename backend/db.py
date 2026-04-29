@@ -21,3 +21,5 @@ def init_db():
     except Exception:
         pass
     Base.metadata.create_all(bind=engine)
+
+print("Database URL:", DATABASE_URL)

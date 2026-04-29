@@ -6,23 +6,25 @@ import random
 from backend.db import SessionLocal
 from backend.models.product import Product
 
-FAKESTORE_URL = "https://fakestoreapi.com/products"
+
+DUMMYJSON_URL = "https://dummyjson.com/products?limit=100"
 
 
 def fetch_external_products() -> List[Dict[str, Any]]:
-    """Busca produtos do FakeStoreAPI e normaliza para o formato usado pelo projeto.
+    """Busca produtos do DummyJSON e normaliza para o formato usado pelo projeto.
 
     Retorna lista de dicts com chaves: id, client, category, revenue, status, region, date
     """
-    resp = requests.get(FAKESTORE_URL, timeout=10)
+    resp = requests.get(DUMMYJSON_URL, timeout=10)
     resp.raise_for_status()
     data = resp.json()
+    products = data.get("products", [])
     rng = random.Random(123)
     regions = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"]
     statuses = ["Completed", "Processing", "Shipped", "Pending"]
     rows: List[Dict[str, Any]] = []
     base_date = datetime.utcnow()
-    for item in data:
+    for item in products:
         try:
             revenue = float(item.get("price", 0.0))
         except Exception:

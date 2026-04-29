@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Query
 from backend.routers.products import router as products_router
 from backend.routers.external import router as external_router
@@ -23,7 +26,7 @@ init_db()
 
 # CORS configuration
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()] 
 
 app.add_middleware(
     CORSMiddleware,
