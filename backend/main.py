@@ -9,6 +9,7 @@ from backend.routers.external_sync import router as external_sync_router
 from backend.data import CATEGORIES, REGIONS, STATUSES
 from backend.db import SessionLocal
 from backend.models.product import Product
+from backend.metrics_engine import get_total_revenue
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import os
@@ -50,7 +51,7 @@ def _apply_filters(
     search: str = "",
 ) -> list[dict[str, Any]]:
     filtered = rows
-    now = datetime(2024, 12, 31)
+    now = datetime.now()
 
     if period != "all":
         days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
@@ -85,6 +86,14 @@ def _apply_filters(
 
 
 def _build_overview(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """_summary_: método para calcular as métricas de visão geral a partir dos dados filtrados
+
+    Args:
+        rows (list[dict[str, Any]]): _description_: lista de dicionários representando os dados filtrados, onde cada dicionário contém informações sobre um pedido, como receita, cliente, categoria, região, status e data.
+
+    Returns:
+        dict[str, Any]: _description_
+    """
     total_revenue = round(sum(item["revenue"] for item in rows), 2)
     total_orders = len(rows)
     customers = {item["client"] for item in rows}
@@ -97,18 +106,25 @@ def _build_overview(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "total_orders": total_orders,
         "total_customers": total_customers,
         "conversion_rate": conversion_rate,
-        "revenue_change": round(random.uniform(-4, 16), 1),
-        "orders_change": round(random.uniform(-3, 12), 1),
-        "customers_change": round(random.uniform(-2, 10), 1),
-        "conversion_change": round(random.uniform(-1, 4), 2),
+        "revenue_change": 0.0,  # TODO: Implementar cálculo real vs período anterior
+        "orders_change": 0.0,
+        "customers_change": 0.0,
+        "conversion_change": 0.0,
     }
 
 
 def _build_sales(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """_summary_: método para calcular as métricas de vendas ao longo do tempo a partir dos dados filtrados, agrupando por mês e calculando receita total, número de pedidos e clientes únicos para cada mês.
+
+    Args:
+        rows (list[dict[str, Any]]): _description_: lista de dicionários representando os dados filtrados, onde cada dicionário contém informações sobre um pedido, como receita, cliente, categoria, região, status e data.
+
+    Returns:
+        list[dict[str, Any]]: _description_: lista de dicionários representando as métricas de vendas ao longo do tempo
+    """
     from datetime import datetime
     from dateutil.relativedelta import relativedelta
 
-    # Gera os últimos 12 meses a partir do mês atual
     today = datetime.now()
     month_keys = []
     for i in range(11, -1, -1):
@@ -139,6 +155,14 @@ def _build_sales(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _build_traffic(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """_summary_: método para calcular as métricas de tráfego por região a partir dos dados filtrados, contando o número de pedidos por região e calculando a porcentagem de cada região em relação ao total.
+
+    Args:
+        rows (list[dict[str, Any]]): _description_: lista de dicionários representando os dados filtrados, onde cada dicionário contém informações sobre um pedido, como receita, cliente, categoria, região, status e data.
+
+    Returns:
+        list[dict[str, Any]]: _description_: lista de dicionários representando as métricas de tráfego por região
+    """
     region_counts = {region: 0 for region in REGIONS}
     for row in rows:
         region_counts[row["region"]] += 1
@@ -299,23 +323,27 @@ async def get_filters():
 
 @app.get("/api/activity")
 async def get_activity():
-    rng = random.Random(17)
-    return [{"hour": f"{h:02d}:00", "active_users": rng.randint(50, 500)} for h in range(24)]
+    # Mock temporário removendo a aleatoriedade pura para consistência
+    return [{"hour": f"{h:02d}:00", "active_users": 0} for h in range(24)]
 
 
 @app.get("/api/recent-orders")
 async def get_recent_orders():
-    latest = sorted(DATASET, key=lambda x: x["date"], reverse=True)[:10]
-    return [
-        {
-            "id": f"ORD-{item['id']:05d}",
-            "customer": item["client"],
-            "amount": item["revenue"],
-            "status": item["status"],
-            "date": item["date"],
-        }
-        for item in latest
-    ]
+    db = SessionLocal()
+    try:
+        latest = db.query(Product).order_by(Product.date.desc()).limit(10).all()
+        return [
+            {
+                "id": f"ORD-{item.id:05d}",
+                "customer": item.client,
+                "amount": item.revenue,
+                "status": item.status,
+                "date": str(item.date),
+            }
+            for item in latest
+        ]
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

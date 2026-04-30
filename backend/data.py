@@ -18,40 +18,10 @@ CLIENTS = [
     "Pulse Group",
 ]
 
-def _build_seed_data() -> list[dict[str, Any]]:
-    rng = random.Random(42)
-    rows: list[dict[str, Any]] = []
-    start_date = datetime(2024, 1, 1)
-    for idx in range(1, 361):
-        date = start_date + timedelta(days=rng.randint(0, 364))
-        category = rng.choice(CATEGORIES)
-        status = rng.choice(STATUSES)
-        base_revenue = {
-            "SaaS": 2200,
-            "E-commerce": 1800,
-            "Fintech": 2600,
-            "Education": 1400,
-            "Health": 2000,
-        }[category]
-        status_multiplier = {
-            "Completed": 1.0,
-            "Shipped": 0.95,
-            "Processing": 0.82,
-            "Pending": 0.65,
-        }[status]
-        revenue = round((base_revenue + rng.uniform(-350, 950)) * status_multiplier, 2)
-        rows.append({
-            "id": idx,
-            "client": rng.choice(CLIENTS),
-            "category": category,
-            "revenue": max(revenue, 250.0),
-            "status": status,
-            "region": rng.choice(REGIONS),
-            "date": date.strftime("%Y-%m-%d"),
-        })
-    return rows
-
-DATASET = _build_seed_data()
+"""
+Funções de seed removidas deste arquivo.
+Utilize backend/seeds/seed_data.py para popular o banco em dev/test.
+"""
 
 def _apply_filters(
     rows: list[dict[str, Any]],

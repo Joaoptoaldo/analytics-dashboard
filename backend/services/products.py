@@ -5,6 +5,9 @@ from sqlalchemy import or_, desc, asc
 from datetime import datetime, timedelta
 
 def get_products_service(period, category, region, status, search, page, page_size, sort_by, sort_order):
+    allowed_sort = ["id", "client", "revenue", "date", "category", "region"]
+    sort_field = sort_by if sort_by in allowed_sort else "date"
+    
     db = SessionLocal()
     try:
         query = db.query(Product)
@@ -32,7 +35,7 @@ def get_products_service(period, category, region, status, search, page, page_si
             )
 
         # Ordenação
-        sort_attr = getattr(Product, sort_by, Product.date)
+        sort_attr = getattr(Product, sort_field)
         if sort_order == "desc":
             query = query.order_by(desc(sort_attr))
         else:
