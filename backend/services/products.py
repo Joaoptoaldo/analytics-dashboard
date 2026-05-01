@@ -6,11 +6,27 @@ from datetime import datetime, timedelta
 import logging
 
 def get_products_service(period, category, region, status, search, page, page_size, sort_by, sort_order):
+    """_summary_: método de serviço para buscar produtos com filtros, ordenação e paginação.
+    Args:
+        period (_type_): _description_: 30d, 90d, 180d, 365d ou all
+        category (_type_): _description_: Electronics, Clothing, Home, Sports ou all
+        region (_type_): _description_: North, South, East, West ou all (DEPRECATED)
+        status (_type_): _description_: active, inactive, pending ou all
+        search (_type_): _description_: termo de busca para client ou category
+        page (_type_): _description_: número da página (1-based)
+        page_size (_type_): _description_: número de itens por página
+        sort_by (_type_): _description_: id, client, revenue, date ou category
+        sort_order (_type_): _description_: asc ou desc
+
+    Returns:
+        _type_: _description_: ProductsResponse com lista de produtos e metadados de paginação
+    """
     allowed_sort = ["id", "client", "revenue", "date", "category"]
-    sort_field = sort_by if sort_by in allowed_sort else "date"
+    sort_field = sort_by if sort_by in allowed_sort else "date" 
+    
     if region != "all":
         logging.warning("[DEPRECATED] region filter ignored")
-    
+       
     db = SessionLocal()
     try:
         query = db.query(Product)

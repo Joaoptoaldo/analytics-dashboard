@@ -25,6 +25,18 @@ def _apply_filters(
     status: str = "all",
     search: str = "",
 ) -> list[dict[str, Any]]:
+    """_summary_: método para aplicar os filtros de período, categoria, status e busca em uma lista de produtos representados como dicionários. Ele filtra os produtos com base no período (últimos 30, 90, 180 ou 365 dias), na categoria, no status e em um termo de busca que pode corresponder ao nome do cliente ou à categoria. O método retorna a lista de produtos que atendem a todos os critérios de filtragem.
+
+    Args:
+        rows (list[dict[str, Any]]): _description_: lista de produtos a ser filtrada, onde cada produto é representado como um dicionário contendo os campos id, client, category, revenue, status e date.
+        period (str, optional): _description_. Defaults to "all".: 30d, 90d, 180d, 365d ou all
+        category (str, optional): _description_. Defaults to "all".: Electronics, Clothing, Home, Sports ou all
+        status (str, optional): _description_. Defaults to "all".: active, inactive, pending ou all
+        search (str, optional): _description_. Defaults to "".: termo de busca para client ou category
+
+    Returns:
+        list[dict[str, Any]]: _description_: lista de produtos que atendem aos critérios de filtragem
+    """
     filtered = rows
     now = datetime(2024, 12, 31)
     if period != "all":

@@ -11,10 +11,10 @@ DUMMYJSON_URL = "https://dummyjson.com/products?limit=100"
 
 
 def fetch_external_products() -> List[Dict[str, Any]]:
-    """Busca produtos do DummyJSON e normaliza para o formato usado pelo projeto.
+    """_summary_: método para buscar produtos de uma API externa (DummyJSON), processar os dados e retornar uma lista de dicionários com os campos necessários para persistência no banco.
 
-    Retorna lista de dicts com chaves: id, client, category, revenue, status, date
-    Data é extraída de meta.createdAt (fonte primária) com fallback para campos top-level.
+    Returns:
+        List[Dict[str, Any]]: _description_: lista de dicionários representando os produtos, onde cada dicionário contém os campos id, client, category, revenue, status e date. O campo date é extraído do campo meta.createdAt ou de outros campos de data disponíveis, e é convertido para o formato YYYY-MM-DD. O status é mapeado de forma determinística com base no id do produto. Se a API externa não fornecer um campo de data válido, o campo date será None.
     """
     resp = requests.get(DUMMYJSON_URL, timeout=10)
     resp.raise_for_status()
@@ -74,9 +74,10 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
 
 def sync_external_products() -> int:
-    """Busca produtos externos e persiste no banco (upsert por external_id).
+    """_summary_: método para sincronizar os produtos da API externa com o banco de dados local. Ele busca os produtos usando fetch_external_products(), e para cada produto, verifica se já existe um registro com o mesmo external_id. Se existir, atualiza os campos client, category, revenue, status e date. Se não existir, cria um novo registro. Ao final, retorna o número total de produtos processados (inseridos ou atualizados)
 
-    Retorna número de registros processados.
+    Returns:
+        int: _description_: número total de produtos processados (inseridos ou atualizados) no banco de dados após a sincronização com a API externa. Se ocorrer algum erro durante o processo, o método deve lançar uma exceção apropriada.
     """
     rows = fetch_external_products()
     db = SessionLocal()
@@ -113,6 +114,11 @@ def sync_external_products() -> int:
 
 
 def get_persisted_products() -> List[Dict[str, Any]]:
+    """_summary_: método para buscar os produtos persistidos no banco de dados local, retornando uma lista de dicionários com os campos id, client, category, revenue, status e date. O campo date é formatado como string no formato YYYY-MM-DD. Este método é útil para verificar os dados que foram sincronizados a partir da API externa e estão disponíveis para consulta no banco de dados local.
+
+    Returns:
+        List[Dict[str, Any]]: _description_: lista de produtos persistidos no banco de dados local
+    """
     db = SessionLocal()
     try:
         products = db.query(Product).order_by(Product.date.desc()).all()

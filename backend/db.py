@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./backend.db")
 
-# For SQLite we need `check_same_thread`; for Postgres (Neon) we must not pass it.
+# Configuração do engine para SQLite ou outros bancos
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
@@ -16,7 +16,8 @@ Base = declarative_base()
 
 
 def init_db():
-    # Import models so they are registered on the metadata
+    """_summary_: função para inicializar o banco de dados, criando as tabelas definidas nos modelos e, se estiver em ambiente de desenvolvimento, sugerindo a execução manual do seed para popular o banco com dados iniciais. A função garante que as tabelas sejam criadas apenas uma vez e que o seed não seja executado automaticamente em produção, prevenindo a inserção acidental de dados de teste em ambientes reais.
+    """
     try:
         from backend.models.product import Product
     except Exception:

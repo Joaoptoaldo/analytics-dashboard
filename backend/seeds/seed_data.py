@@ -4,6 +4,11 @@ from backend.models.product import Product
 
 import os
 def seed_database():
+    """_summary_: 
+
+    Raises:
+        RuntimeError: _description_
+    """
     ENV = os.getenv("ENV", "production")
     ALLOW_SEED = os.getenv("ALLOW_SEED", "false").lower() == "true"
     if ENV != "development" or not ALLOW_SEED:

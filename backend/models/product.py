@@ -16,6 +16,11 @@ class Product(Base):
     __table_args__ = (UniqueConstraint("external_id", name="uq_external_id"),)
 
     def to_dict(self):
+        """_summary_: 
+
+        Returns:
+            _type_: _description_
+        """
         return {
             "id": self.external_id or self.id,
             "client": self.client,
