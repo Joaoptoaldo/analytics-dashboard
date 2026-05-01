@@ -1,13 +1,15 @@
-from backend.data import _build_seed_data
+﻿import os
+
 from backend.db import SessionLocal
 from backend.models.product import Product
+from backend.data import _build_seed_data
 
-import os
+
 def seed_database():
-    """_summary_: 
+    """_summary_: Popula o banco com dados de seed em ambiente de desenvolvimento.
 
     Raises:
-        RuntimeError: _description_
+        RuntimeError: _description_: Lancada quando `ENV!=development` ou `ALLOW_SEED!=true`.
     """
     ENV = os.getenv("ENV", "production")
     ALLOW_SEED = os.getenv("ALLOW_SEED", "false").lower() == "true"

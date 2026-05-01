@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, Date, UniqueConstraint
+﻿from sqlalchemy import Column, Date, Float, Integer, String, UniqueConstraint
+
 from backend.db import Base
-import datetime
 
 
 class Product(Base):
@@ -16,10 +16,10 @@ class Product(Base):
     __table_args__ = (UniqueConstraint("external_id", name="uq_external_id"),)
 
     def to_dict(self):
-        """_summary_: 
+        """_summary_: Converte o modelo Product para dicionario serializavel.
 
         Returns:
-            _type_: _description_
+            _type_: _description_: Dicionario com `id`, `client`, `category`, `revenue`, `status` e `date` (`YYYY-MM-DD` ou `None`).
         """
         return {
             "id": self.external_id or self.id,

@@ -16,8 +16,6 @@ Base = declarative_base()
 
 
 def init_db():
-    """_summary_: função para inicializar o banco de dados, criando as tabelas definidas nos modelos e, se estiver em ambiente de desenvolvimento, sugerindo a execução manual do seed para popular o banco com dados iniciais. A função garante que as tabelas sejam criadas apenas uma vez e que o seed não seja executado automaticamente em produção, prevenindo a inserção acidental de dados de teste em ambientes reais.
-    """
     try:
         from backend.models.product import Product
     except Exception:

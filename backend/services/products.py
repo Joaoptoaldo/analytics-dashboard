@@ -1,32 +1,36 @@
-from backend.schemas.products import ProductsResponse, ProductItem
+﻿import logging
+from datetime import datetime, timedelta
+
+from sqlalchemy import asc, desc, or_
+
 from backend.db import SessionLocal
 from backend.models.product import Product
-from sqlalchemy import or_, desc, asc
-from datetime import datetime, timedelta
-import logging
+from backend.schemas.products import ProductItem, ProductsResponse
+
 
 def get_products_service(period, category, region, status, search, page, page_size, sort_by, sort_order):
-    """_summary_: método de serviço para buscar produtos com filtros, ordenação e paginação.
+    """_summary_: Serviço para buscar produtos com filtros, ordenação e paginação.
+
     Args:
-        period (_type_): _description_: 30d, 90d, 180d, 365d ou all
-        category (_type_): _description_: Electronics, Clothing, Home, Sports ou all
-        region (_type_): _description_: North, South, East, West ou all (DEPRECATED)
-        status (_type_): _description_: active, inactive, pending ou all
-        search (_type_): _description_: termo de busca para client ou category
-        page (_type_): _description_: número da página (1-based)
-        page_size (_type_): _description_: número de itens por página
-        sort_by (_type_): _description_: id, client, revenue, date ou category
-        sort_order (_type_): _description_: asc ou desc
+        period (_type_): _description_: Filtro de período (`30d`, `90d`, `180d`, `365d` ou `all`).
+        category (_type_): _description_: Categoria específica ou `all`.
+        region (_type_): _description_: Campo legado (ignorado na consulta).
+        status (_type_): _description_: Status específico ou `all`.
+        search (_type_): _description_: Busca textual parcial em `client` e `category`.
+        page (_type_): _description_: Página atual (mínimo 1).
+        page_size (_type_): _description_: Tamanho da página (mínimo 1, máximo 50).
+        sort_by (_type_): _description_: Campo de ordenação (`id`, `client`, `revenue`, `date`, `category`).
+        sort_order (_type_): _description_: Direção da ordenação (`asc` ou `desc`).
 
     Returns:
-        _type_: _description_: ProductsResponse com lista de produtos e metadados de paginação
+        _type_: _description_: ProductsResponse com itens paginados e metadados (`total`, `page`, `page_size`, `total_pages`).
     """
     allowed_sort = ["id", "client", "revenue", "date", "category"]
-    sort_field = sort_by if sort_by in allowed_sort else "date" 
-    
+    sort_field = sort_by if sort_by in allowed_sort else "date"
+
     if region != "all":
         logging.warning("[DEPRECATED] region filter ignored")
-       
+
     db = SessionLocal()
     try:
         query = db.query(Product)
