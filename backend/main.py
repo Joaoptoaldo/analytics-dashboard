@@ -1,7 +1,25 @@
-from sqlalchemy import func, distinct
+from datetime import datetime, timedelta
 
-from sqlalchemy import func, distinct, or_
 import logging
+
+from sqlalchemy import distinct, func, or_
+
+
+def _get_period_reference_date(db):
+    """_summary_: Obtém a data de referência para o cálculo do período, que é a data mais recente presente no banco de dados. Se não houver registros com data válida, retorna a data atual. Essa função é útil para garantir que os cálculos de período sejam baseados na data mais recente disponível nos dados, proporcionando uma referência consistente para filtros de período como "30d", "90d", etc.
+
+    Args:
+        db (_type_): _description_: Instância do banco de dados.
+
+    Returns:
+        _type_: _description_: Data de referência para o cálculo do período, que é a data mais recente presente no banco de dados ou a data atual se não houver registros com data válida.
+    """
+    latest_date = db.query(func.max(Product.date)).scalar()
+    if latest_date is not None:
+        return latest_date
+    return datetime.now().date()
+
+
 def _build_overview_db(db):
     """_summary_: Bloco legado parcial; mantido por compatibilidade e sem uso no fluxo atual.
 
@@ -12,8 +30,6 @@ def _build_overview_db(db):
     total_revenue = db.query(func.sum(Product.revenue)).scalar() or 0.0
     total_customers = db.query(func.count(distinct(Product.client))).scalar() or 0
     completed_orders = db.query(func.count(Product.id)).filter(Product.status == "Completed").scalar() or 0
-from datetime import datetime, timedelta
-
 def _apply_db_filters(query, period, category, status, search):
     """_summary_: Aplica os filtros de período, categoria, status e busca textual em uma consulta do SQLAlchemy, retornando a consulta filtrada. O filtro de período restringe os produtos com base na data, o filtro de categoria restringe os produtos a uma categoria específica, o filtro de status restringe os produtos a um status específico, e o filtro de busca textual permite filtrar os produtos com base em uma correspondência parcial no nome do cliente ou na categoria. A função é útil para refinar os resultados exibidos para o usuário com base em suas preferências e necessidades específicas, garantindo que a lógica de filtragem seja centralizada e reutilizável em diferentes partes do código que realizam consultas ao banco de dados.
 
@@ -31,7 +47,8 @@ def _apply_db_filters(query, period, category, status, search):
     if period != "all":
         days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
         days = days_map.get(period, 365)
-        min_date = datetime.now() - timedelta(days=days)
+        reference_date = _get_period_reference_date(query.session)
+        min_date = reference_date - timedelta(days=days)
         query = query.filter(Product.date >= min_date)
     
     if category != "all":
@@ -404,7 +421,6 @@ async def get_overview(
         logging.warning("[DEPRECATED] region filter ignored")
     db = SessionLocal()
     try:
-        return _build_overview_db(db)
         return _build_overview_db(db, period, category, status, search)
     finally:
         db.close()
@@ -435,7 +451,6 @@ async def get_sales(
         logging.warning("[DEPRECATED] region filter ignored")
     db = SessionLocal()
     try:
-        return _build_sales_db(db)
         return _build_sales_db(db, period, category, status, search)
     finally:
         db.close()

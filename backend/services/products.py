@@ -1,11 +1,18 @@
 ﻿import logging
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 
 from sqlalchemy import asc, desc, or_
 
 from backend.db import SessionLocal
 from backend.models.product import Product
 from backend.schemas.products import ProductItem, ProductsResponse
+
+
+def _get_period_reference_date(db) -> date:
+    latest_date = db.query(Product.date).order_by(Product.date.desc()).limit(1).scalar()
+    if latest_date is not None:
+        return latest_date
+    return date.today()
 
 
 def get_products_service(period, category, region, status, search, page, page_size, sort_by, sort_order):
@@ -39,7 +46,8 @@ def get_products_service(period, category, region, status, search, page, page_si
         if period != "all":
             days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
             days = days_map.get(period, 365)
-            min_date = datetime.now().date() - timedelta(days=days)
+            reference_date = _get_period_reference_date(db)
+            min_date = reference_date - timedelta(days=days)
             query = query.filter(Product.date >= min_date)
         if category != "all":
             query = query.filter(Product.category == category)

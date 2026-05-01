@@ -56,10 +56,15 @@ export default function Dashboard() {
   const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [salesTrendRange, setSalesTrendRange] = useState<'30d' | '90d' | '180d' | '1y'>('30d')
 
 
   const debouncedSearch = useDebounce(search, 400);
+  const salesTrendRange = useMemo<'30d' | '90d' | '180d' | '1y'>(() => {
+    if (period === '365d') return '1y'
+    if (period === 'all') return '30d'
+    return period as '30d' | '90d' | '180d' | '1y'
+  }, [period])
+
   const filters = useMemo(
     () => ({ period, category, status, search: debouncedSearch }),
     [period, category, status, debouncedSearch],
@@ -271,18 +276,6 @@ export default function Dashboard() {
         <Card className="xl:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle>Vendas Temporais</CardTitle>
-            <div className="flex flex-wrap gap-2 justify-end">
-              {(['30d', '90d', '180d', '1y'] as const).map((range) => (
-                <Button
-                  key={range}
-                  variant={salesTrendRange === range ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSalesTrendRange(range)}
-                >
-                  {range}
-                </Button>
-              ))}
-            </div>
           </CardHeader>
           <CardContent className="h-80">
             {salesTrendState === 'error' ? (
