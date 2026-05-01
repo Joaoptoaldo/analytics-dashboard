@@ -176,6 +176,42 @@ export default function Dashboard() {
   const hasActiveFilters =
     period !== 'all' || category !== 'all' || status !== 'all' || search.trim() !== ''
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6']
+  const RADIAN = Math.PI / 180
+
+  const renderCategoryPieLabel = ({
+    cx = 0,
+    cy = 0,
+    midAngle = 0,
+    innerRadius = 0,
+    outerRadius = 0,
+    percent = 0,
+  }: {
+    cx?: number
+    cy?: number
+    midAngle?: number
+    innerRadius?: number
+    outerRadius?: number
+    percent?: number
+  }) => {
+    if (percent < 0.05) return null
+    const radius = innerRadius + (outerRadius - innerRadius) * 1.12
+    const x = cx + radius * Math.cos(-midAngle * RADIAN)
+    const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="#ffffff"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={11}
+        fontWeight={600}
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    )
+  }
 
   return (
     <div className="p-8 space-y-6">
@@ -358,7 +394,14 @@ export default function Dashboard() {
             ) : (
               <ResponsiveContainer width="100%" height="50%">
                 <PieChart>
-                  <Pie data={categoryDistributionData} dataKey="orders" nameKey="category" outerRadius={70} label>
+                  <Pie
+                    data={categoryDistributionData}
+                    dataKey="orders"
+                    nameKey="category"
+                    outerRadius={80}
+                    label={renderCategoryPieLabel}
+                    labelLine={false}
+                  >
                     {categoryDistributionData.map((_: unknown, index: number) => (
                       <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                     ))}
@@ -367,7 +410,7 @@ export default function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
             )}
-            <div style={{ height: 8 }} />
+            <div style={{ height: 50 }} />
             {topProductsState === 'error' ? (
               <Empty>
                 <EmptyHeader>

@@ -197,7 +197,7 @@ export default function Reports() {
               ) : (
                 <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
-                    <Pie data={categoryDistribution} dataKey="orders" nameKey="category" outerRadius={60} fill="#82ca9d">
+                    <Pie data={categoryDistribution} dataKey="orders" nameKey="category" outerRadius={95} fill="#82ca9d">
                       {(categoryDistribution || []).map((entry: { category: string | null; revenue: number | null; orders: number | null }, index: number) => (
                         <Cell key={`cell-${index}`} fill={["#60a5fa", "#f97316", "#34d399", "#f472b6", "#a78bfa"][index % 5]} />
                       ))}
