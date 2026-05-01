@@ -5,7 +5,7 @@ import {
   EmptyHeader,
   EmptyTitle
 } from '@/components/ui/empty';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -23,8 +23,7 @@ import { useDashboard } from '../../hooks/use-dashboard';
 
 export default function Analytics() {
   // Filtros simplificados para análise global
-  const [period, setPeriod] = useState('all');
-  const filters = useMemo(() => ({ period, category: 'all', status: 'all', search: '' }), [period]);
+  const filters = useMemo(() => ({ period: 'all', category: 'all', status: 'all', search: '' }), []);
   const tableParams = useMemo(() => ({ page: 1, pageSize: 50, sortBy: 'date', sortOrder: 'desc' as 'desc' | 'asc' }), []);
   const {
     overview,
@@ -37,7 +36,6 @@ export default function Analytics() {
     isLoading,
     error,
   } = useDashboard(filters, tableParams);
-  const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>;
   if (error) return <ErrorMessage message={error.message || 'Erro ao carregar analytics.'} onRetry={() => window.location.reload()} />;

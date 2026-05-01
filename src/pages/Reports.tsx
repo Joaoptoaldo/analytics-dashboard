@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CartesianGrid,
   Cell,
@@ -37,19 +37,13 @@ export default function Reports() {
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState('all');
   const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const debouncedSearch = useDebounce(searchInput, 400);
 
-  useEffect(() => {
-    setSearch(debouncedSearch);
-    setPage(1);
-  }, [debouncedSearch]);
-
-  const filters = useMemo(() => ({ period, category, status, search }), [period, category, status, search]);
+  const filters = useMemo(() => ({ period, category, status, search: debouncedSearch }), [period, category, status, debouncedSearch]);
   const tableParams = useMemo(() => ({ page, pageSize: 8, sortBy, sortOrder }), [page, sortBy, sortOrder]);
   const {
     products,
@@ -78,7 +72,6 @@ export default function Reports() {
     setCategory('all');
     setStatus('all');
     setSearchInput('');
-    setSearch('');
     setPage(1);
     setSortBy('date');
     setSortOrder('desc');
@@ -137,7 +130,7 @@ export default function Reports() {
             </div>
             <div>
               <label className="block text-xs mb-1">Busca</label>
-              <Input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Buscar cliente, categoria..." className="w-48" />
+              <Input value={searchInput} onChange={e => { setSearchInput(e.target.value); setPage(1); }} placeholder="Buscar cliente, categoria..." className="w-48" />
             </div>
             <Button variant="ghost" onClick={resetFilters}>Limpar</Button>
           </div>

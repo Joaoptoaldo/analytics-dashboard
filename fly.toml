@@ -2,7 +2,7 @@ app = "dashboard-backend"
 primary_region = "gru"
 
 [build]
-  image = "Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "8080"

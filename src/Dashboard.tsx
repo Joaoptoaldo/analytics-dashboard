@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSWRConfig } from 'swr'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -53,7 +53,6 @@ export default function Dashboard() {
   const [category, setCategory] = useState('all')
   const [status, setStatus] = useState('all')
   const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -65,11 +64,6 @@ export default function Dashboard() {
     if (period === 'all') return '30d'
     return period as '30d' | '90d' | '180d' | '1y'
   }, [period])
-
-  useEffect(() => {
-    setSearch(debouncedSearch)
-    setPage(1)
-  }, [debouncedSearch])
 
   const filters = useMemo(
     () => ({ period, category, status, search: debouncedSearch }),
@@ -122,8 +116,8 @@ export default function Dashboard() {
       await mutate('/api/metrics/ticket-average')
       await mutate('/api/distribution/category')
       await mutate('/api/top/products')
-    } catch (e: any) {
-      setSyncError(e?.message || 'Erro desconhecido')
+    } catch (error: unknown) {
+      setSyncError(error instanceof Error ? error.message : 'Erro desconhecido')
     } finally {
       setSyncLoading(false)
       setTimeout(() => setSyncSuccess(false), 2000)
@@ -149,7 +143,6 @@ export default function Dashboard() {
     setCategory('all')
     setStatus('all')
     setSearchInput('')
-    setSearch('')
     setPage(1)
     setSortBy('date')
     setSortOrder('desc')
@@ -174,7 +167,7 @@ export default function Dashboard() {
   const topProductsData = topProducts || []
   const hasNoResults = !productsItems.length
   const hasActiveFilters =
-    period !== 'all' || category !== 'all' || status !== 'all' || search.trim() !== ''
+    period !== 'all' || category !== 'all' || status !== 'all' || debouncedSearch.trim() !== ''
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6']
   const RADIAN = Math.PI / 180
 
@@ -279,6 +272,7 @@ export default function Dashboard() {
               value={searchInput}
               onChange={(event) => {
                 setSearchInput(event.target.value)
+                setPage(1)
               }}
             />
           </div>

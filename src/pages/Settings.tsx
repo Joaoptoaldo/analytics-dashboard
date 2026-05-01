@@ -1,25 +1,31 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export default function Settings() {
-  const [siteName, setSiteName] = useState('')
-  const [itemsPerPage, setItemsPerPage] = useState(12)
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
+  const [siteName, setSiteName] = useState(() => {
     try {
       const raw = localStorage.getItem('app_settings')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        setSiteName(parsed.siteName || '')
-        setItemsPerPage(parsed.itemsPerPage || 12)
-      }
-    } catch (e) {
-      // ignore
+      if (!raw) return ''
+      const parsed = JSON.parse(raw)
+      return typeof parsed.siteName === 'string' ? parsed.siteName : ''
+    } catch {
+      return ''
     }
-  }, [])
+  })
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    try {
+      const raw = localStorage.getItem('app_settings')
+      if (!raw) return 12
+      const parsed = JSON.parse(raw)
+      const value = Number(parsed.itemsPerPage)
+      return Number.isFinite(value) && value > 0 ? value : 12
+    } catch {
+      return 12
+    }
+  })
+  const [saved, setSaved] = useState(false)
 
   const onSave = () => {
     const payload = { siteName, itemsPerPage }

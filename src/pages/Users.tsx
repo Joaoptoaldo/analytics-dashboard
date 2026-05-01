@@ -21,10 +21,16 @@ import { useEffect, useMemo, useState } from 'react';
 export default function Users() {
   const [category, setCategory] = useState('all');
   const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 12;
-  const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
+  const [blockedUsers, setBlockedUsers] = useState<Set<string>>(() => {
+    try {
+      const rawBlocked = localStorage.getItem('blocked_users')
+      return rawBlocked ? new Set<string>(JSON.parse(rawBlocked)) : new Set<string>()
+    } catch {
+      return new Set<string>()
+    }
+  });
 
   const toggleBlock = (client: string) => {
     setBlockedUsers((prev) => {
@@ -34,47 +40,40 @@ export default function Users() {
       return next;
     });
   };
-  const [edits, setEdits] = useState<Record<string, Partial<ProductItem>>>({})
-  const [editing, setEditing] = useState<ProductItem | null>(null)
+  const [edits, setEdits] = useState<Record<string, Partial<ProductItem>>>(() => {
+    try {
+      const rawEdits = localStorage.getItem('user_edits')
+      return rawEdits ? JSON.parse(rawEdits) : {}
+    } catch {
+      return {}
+    }
+  })
 
   const debouncedSearch = useDebounce(searchInput, 400);
 
   useEffect(() => {
-    setSearch(debouncedSearch)
-    setPage(1)
-  }, [debouncedSearch])
-
-  useEffect(() => {
-    try {
-      const rawBlocked = localStorage.getItem('blocked_users')
-      if (rawBlocked) setBlockedUsers(new Set(JSON.parse(rawBlocked)))
-      const rawEdits = localStorage.getItem('user_edits')
-      if (rawEdits) setEdits(JSON.parse(rawEdits))
-    } catch (e) {
-      // ignore
-    }
-  }, [])
-
-  useEffect(() => {
     try {
       localStorage.setItem('blocked_users', JSON.stringify(Array.from(blockedUsers)))
-    } catch (e) { }
+    } catch {
+      return
+    }
   }, [blockedUsers])
 
   useEffect(() => {
     try {
       localStorage.setItem('user_edits', JSON.stringify(edits))
-    } catch (e) { }
+    } catch {
+      return
+    }
   }, [edits])
 
   const saveEdit = (client: string, patch: Partial<ProductItem>) => {
     setEdits(prev => ({ ...prev, [client]: { ...(prev[client] || {}), ...patch } }))
-    setEditing(null)
   }
 
   // Filtros para buscar todos os produtos e extrair clientes únicos
-  const filters = useMemo(() => ({ period: 'all', category, status: 'all', search }), [category, search]);
-  const tableParams = useMemo(() => ({ page: 1, pageSize: 50, sortBy: 'client', sortOrder: 'asc' as 'asc' | 'desc' }), [filters]);
+  const filters = useMemo(() => ({ period: 'all', category, status: 'all', search: debouncedSearch }), [category, debouncedSearch]);
+  const tableParams = useMemo(() => ({ page: 1, pageSize: 50, sortBy: 'client', sortOrder: 'asc' as 'asc' | 'desc' }), []);
   const { products, filterOptions, isLoading, error } = useDashboard(filters, tableParams);
 
   // Extrair clientes únicos e status mais recente
@@ -90,14 +89,14 @@ export default function Users() {
 
     let arr = Array.from(map.values());
     // Filtro de busca
-    if (search) {
-      const s = search.toLowerCase();
+    if (debouncedSearch) {
+      const s = debouncedSearch.toLowerCase();
       arr = arr.filter(u => u.client.toLowerCase().includes(s));
     }
     // Paginação
     const start = (page - 1) * pageSize;
     return arr.slice(start, start + pageSize);
-  }, [products, search, page, pageSize]);
+  }, [products, debouncedSearch, page, pageSize]);
 
   const totalUsers = useMemo(() => {
     if (!products) return 0;
@@ -110,7 +109,6 @@ export default function Users() {
   const resetFilters = () => {
     setCategory('all');
     setSearchInput('');
-    setSearch('');
     setPage(1);
   };
 
@@ -140,7 +138,7 @@ export default function Users() {
             {/* Região removida: não disponível na API externa */}
             <div>
               <label className="block text-xs mb-1">Busca</label>
-              <Input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Buscar usuário..." className="w-48" />
+              <Input value={searchInput} onChange={e => { setSearchInput(e.target.value); setPage(1); }} placeholder="Buscar usuário..." className="w-48" />
             </div>
             <Button variant="ghost" onClick={resetFilters}>Limpar</Button>
           </div>
