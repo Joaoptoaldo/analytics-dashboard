@@ -119,6 +119,15 @@ type MetricResult<T> = {
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const DATA_REFRESH_INTERVAL_MS = 30000
+
+const swrRefreshConfig = {
+  refreshInterval: DATA_REFRESH_INTERVAL_MS,
+  revalidateOnFocus: true,
+  revalidateOnReconnect: true,
+  refreshWhenHidden: false,
+  keepPreviousData: true,
+} as const
 
 function toQueryString(filters: DashboardFilters, tableParams?: TableParams) {
   const query = new URLSearchParams({
@@ -159,6 +168,7 @@ function useMetricEndpoint<T>(key: string, url: string): MetricResult<T> {
   const { data, error, isLoading } = useSWR<MetricEnvelope<T>>(
     key,
     () => fetchJson<MetricEnvelope<T>>(url),
+    swrRefreshConfig,
   )
 
   const parsed = useMemo(() => parseMetricResponse<T>(data), [data])
@@ -230,6 +240,7 @@ export function useDashboard(filters: DashboardFilters, tableParams: TableParams
   const { data: overview, error: overviewError } = useSWR<DashboardOverview>(
     `/api/overview?${baseQuery}`,
     () => fetchJson<DashboardOverview>(`${API_BASE}/overview?${baseQuery}`),
+    swrRefreshConfig,
   )
 
   const useExternal = import.meta.env.VITE_USE_EXTERNAL === 'true'
@@ -238,11 +249,13 @@ export function useDashboard(filters: DashboardFilters, tableParams: TableParams
   const { data: products, error: productsError } = useSWR<ProductsResponse>(
     `/api/${productsPath}?${productsQuery}`,
     () => fetchJson<ProductsResponse>(`${API_BASE}/${productsPath}?${productsQuery}`),
+    swrRefreshConfig,
   )
 
   const { data: filterOptions, error: filterOptionsError } = useSWR<FilterOptionsResponse>(
     '/api/filters',
     () => fetchJson<FilterOptionsResponse>(`${API_BASE}/filters`),
+    swrRefreshConfig,
   )
 
   const sales = useSales()

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSWRConfig } from 'swr'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -52,18 +52,24 @@ export default function Dashboard() {
   const [period, setPeriod] = useState('all')
   const [category, setCategory] = useState('all')
   const [status, setStatus] = useState('all')
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
 
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(searchInput, 400);
   const salesTrendRange = useMemo<'30d' | '90d' | '180d' | '1y'>(() => {
     if (period === '365d') return '1y'
     if (period === 'all') return '30d'
     return period as '30d' | '90d' | '180d' | '1y'
   }, [period])
+
+  useEffect(() => {
+    setSearch(debouncedSearch)
+    setPage(1)
+  }, [debouncedSearch])
 
   const filters = useMemo(
     () => ({ period, category, status, search: debouncedSearch }),
@@ -104,10 +110,18 @@ export default function Dashboard() {
       const resp = await fetch(`${API_BASE}/external-products/sync`, { method: 'POST' })
       if (!resp.ok) throw new Error('Erro ao sincronizar')
       setSyncSuccess(true)
-      // revalidate both possible cache keys
+      // Revalidar todas as queries para garantir que os dados mais recentes sejam exibidos após a sincronização
+      const overviewQuery = `period=${filters.period}&category=${filters.category}&status=${filters.status}&search=${filters.search}`
       const productsQuery = `period=${filters.period}&category=${filters.category}&status=${filters.status}&search=${filters.search}&page=${tableParams.page}&page_size=${tableParams.pageSize}&sort_by=${tableParams.sortBy}&sort_order=${tableParams.sortOrder}`
       await mutate(`/api/external-products?${productsQuery}`)
       await mutate(`/api/products?${productsQuery}`)
+      await mutate(`/api/overview?${overviewQuery}`)
+      await mutate('/api/filters')
+      await mutate('/api/sales/monthly')
+      await mutate(`/api/sales/trend?range=${salesTrendRange}`)
+      await mutate('/api/metrics/ticket-average')
+      await mutate('/api/distribution/category')
+      await mutate('/api/top/products')
     } catch (e: any) {
       setSyncError(e?.message || 'Erro desconhecido')
     } finally {
@@ -134,6 +148,7 @@ export default function Dashboard() {
     setPeriod('all')
     setCategory('all')
     setStatus('all')
+    setSearchInput('')
     setSearch('')
     setPage(1)
     setSortBy('date')
@@ -225,10 +240,9 @@ export default function Dashboard() {
             </Select>
             <Input
               placeholder="Buscar cliente/categoria"
-              value={search}
+              value={searchInput}
               onChange={(event) => {
-                setSearch(event.target.value)
-                setPage(1)
+                setSearchInput(event.target.value)
               }}
             />
           </div>

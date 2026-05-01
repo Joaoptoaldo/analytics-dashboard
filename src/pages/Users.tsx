@@ -15,10 +15,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDashboard, type ProductItem } from '@/hooks/use-dashboard';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useEffect, useMemo, useState } from 'react';
 
 export default function Users() {
   const [category, setCategory] = useState('all');
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 12;
@@ -34,6 +36,13 @@ export default function Users() {
   };
   const [edits, setEdits] = useState<Record<string, Partial<ProductItem>>>({})
   const [editing, setEditing] = useState<ProductItem | null>(null)
+
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  useEffect(() => {
+    setSearch(debouncedSearch)
+    setPage(1)
+  }, [debouncedSearch])
 
   useEffect(() => {
     try {
@@ -100,6 +109,7 @@ export default function Users() {
 
   const resetFilters = () => {
     setCategory('all');
+    setSearchInput('');
     setSearch('');
     setPage(1);
   };
@@ -130,7 +140,7 @@ export default function Users() {
             {/* Região removida: não disponível na API externa */}
             <div>
               <label className="block text-xs mb-1">Busca</label>
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar usuário..." className="w-48" />
+              <Input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Buscar usuário..." className="w-48" />
             </div>
             <Button variant="ghost" onClick={resetFilters}>Limpar</Button>
           </div>
