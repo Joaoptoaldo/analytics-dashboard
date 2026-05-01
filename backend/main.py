@@ -1,19 +1,109 @@
+from sqlalchemy import func, distinct
+import logging
+def _build_overview_db(db):
+    total = db.query(func.count(Product.id)).scalar() or 0
+    total_revenue = db.query(func.sum(Product.revenue)).scalar() or 0.0
+    total_customers = db.query(func.count(distinct(Product.client))).scalar() or 0
+    completed_orders = db.query(func.count(Product.id)).filter(Product.status == "Completed").scalar() or 0
+    conversion_rate = round((completed_orders / total) * 100, 2) if total else 0
+    logging.info(f"[KPI][OVERVIEW] total: {total}, total_customers: {total_customers}, completed_orders: {completed_orders}")
+    if total == 0:
+        return {
+            "total_revenue": None,
+            "total_orders": None,
+            "total_customers": None,
+            "conversion_rate": None,
+            "state": "no_data",
+            "reason": "no_data"
+        }
+    return {
+        "total_revenue": round(total_revenue, 2),
+        "total_orders": total,
+        "total_customers": total_customers,
+        "conversion_rate": conversion_rate,
+        "revenue_change": 0.0,
+        "orders_change": 0.0,
+        "customers_change": 0.0,
+        "conversion_change": 0.0,
+        "state": "valid"
+    }
+def _build_sales_db(db):
+    total = db.query(func.count(Product.id)).filter(Product.date != None).scalar() or 0
+    if total == 0:
+        logging.info(f"[KPI][SALES] Ignorados todos os registros: nenhum com date válido")
+        return [{"state": "no_data", "month": None, "revenue": None, "orders": None, "customers": None, "reason": "no_valid_date"}]
+    # Agrupar por mês (YYYY-MM)
+    results = db.query(
+        func.strftime('%Y-%m', Product.date).label('month'),
+        func.sum(Product.revenue).label('revenue'),
+        func.count(Product.id).label('orders'),
+        func.count(distinct(Product.client)).label('customers')
+    ).filter(Product.date != None)
+    results = results.group_by('month').order_by('month').all()
+    logging.info(f"[KPI][SALES] total válidos: {total}, meses: {len(results)}")
+    return [
+        {
+            "month": r.month,
+            "revenue": float(r.revenue),
+            "orders": r.orders,
+            "customers": r.customers
+        }
+        for r in results
+    ]
+
+# Distribuição por Categoria (count)
+def _build_category_distribution_db(db):
+    total = db.query(func.count(Product.id)).filter(Product.date != None).scalar() or 0
+    if total == 0:
+        logging.info(f"[KPI][CATEGORY_DIST] Nenhum registro com date válido")
+        return [{"state": "no_data", "category": None, "count": None, "reason": "no_valid_date"}]
+    results = db.query(
+        Product.category,
+        func.count(Product.id).label('count')
+    ).filter(Product.date != None)
+    results = results.group_by(Product.category).all()
+    return [
+        {
+            "category": r.category,
+            "count": r.count
+        }
+        for r in results
+    ]
+
+# Receita por Categoria (sum)
+def _build_category_revenue_db(db):
+    total = db.query(func.count(Product.id)).filter(Product.date != None).scalar() or 0
+    if total == 0:
+        logging.info(f"[KPI][CATEGORY_REVENUE] Nenhum registro com date válido")
+        return [{"state": "no_data", "category": None, "revenue": None, "reason": "no_valid_date"}]
+    results = db.query(
+        Product.category,
+        func.sum(Product.revenue).label('revenue')
+    ).filter(Product.date != None)
+    results = results.group_by(Product.category).all()
+    return [
+        {
+            "category": r.category,
+            "revenue": float(r.revenue)
+        }
+        for r in results
+    ]
 from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, Query
 from backend.routers.products import router as products_router
 from backend.routers.external import router as external_router
+from backend.routers.analytics import router as analytics_router
 from backend.db import init_db
 from backend.routers.external_sync import router as external_sync_router
-from backend.data import CATEGORIES, REGIONS, STATUSES
+from backend.data import CATEGORIES, STATUSES
 from backend.db import SessionLocal
 from backend.models.product import Product
 from backend.metrics_engine import get_total_revenue
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import os
-import random
 from typing import Any
 from backend.routers.products import router as products_router
 
@@ -22,6 +112,7 @@ from backend.routers.products import router as products_router
 app = FastAPI(title="Analytics Dashboard API", version="1.0.0")
 app.include_router(products_router, prefix="/api")
 app.include_router(external_router, prefix="/api")
+app.include_router(analytics_router, prefix="/api")
 app.include_router(external_sync_router, prefix="/api")
 
 
@@ -46,11 +137,10 @@ def _apply_filters(
     rows: list[dict[str, Any]],
     period: str = "all",
     category: str = "all",
-    region: str = "all",
     status: str = "all",
     search: str = "",
 ) -> list[dict[str, Any]]:
-    filtered = rows
+    filtered = [row for row in rows if row.get("date")]
     now = datetime.now()
 
     if period != "all":
@@ -66,9 +156,6 @@ def _apply_filters(
     if category != "all":
         filtered = [row for row in filtered if row["category"] == category]
 
-    if region != "all":
-        filtered = [row for row in filtered if row["region"] == region]
-
     if status != "all":
         filtered = [row for row in filtered if row["status"] == status]
 
@@ -79,7 +166,6 @@ def _apply_filters(
             for row in filtered
             if search_term in row["client"].lower()
             or search_term in row["category"].lower()
-            or search_term in row["region"].lower()
         ]
 
     return filtered
@@ -94,13 +180,20 @@ def _build_overview(rows: list[dict[str, Any]]) -> dict[str, Any]:
     Returns:
         dict[str, Any]: _description_
     """
+    if not rows:
+        return {
+            "total_revenue": None,
+            "total_orders": None,
+            "total_customers": None,
+            "conversion_rate": None,
+            "state": "no_data"
+        }
     total_revenue = round(sum(item["revenue"] for item in rows), 2)
     total_orders = len(rows)
     customers = {item["client"] for item in rows}
     total_customers = len(customers)
     completed_orders = sum(1 for item in rows if item["status"] == "Completed")
     conversion_rate = round((completed_orders / total_orders) * 100, 2) if total_orders else 0
-
     return {
         "total_revenue": total_revenue,
         "total_orders": total_orders,
@@ -110,6 +203,7 @@ def _build_overview(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "orders_change": 0.0,
         "customers_change": 0.0,
         "conversion_change": 0.0,
+        "state": "valid"
     }
 
 
@@ -135,14 +229,16 @@ def _build_sales(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         m: {"month": m, "revenue": 0.0, "orders": 0, "customers_set": set()} for m in month_keys
     }
 
-    for row in rows:
+    valid_rows = [row for row in rows if row.get("date")]
+    if not valid_rows:
+        return [{"state": "no_data", "month": None, "revenue": None, "orders": None, "customers": None}]
+    for row in valid_rows:
         dt = datetime.strptime(row["date"], "%Y-%m-%d")
         month_key = dt.strftime("%b %Y")
         if month_key in month_data:
             month_data[month_key]["revenue"] += row["revenue"]
             month_data[month_key]["orders"] += 1
             month_data[month_key]["customers_set"].add(row["client"])
-
     return [
         {
             "month": key,
@@ -151,30 +247,6 @@ def _build_sales(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "customers": len(month_data[key]["customers_set"]),
         }
         for key in month_keys
-    ]
-
-
-def _build_traffic(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """_summary_: método para calcular as métricas de tráfego por região a partir dos dados filtrados, contando o número de pedidos por região e calculando a porcentagem de cada região em relação ao total.
-
-    Args:
-        rows (list[dict[str, Any]]): _description_: lista de dicionários representando os dados filtrados, onde cada dicionário contém informações sobre um pedido, como receita, cliente, categoria, região, status e data.
-
-    Returns:
-        list[dict[str, Any]]: _description_: lista de dicionários representando as métricas de tráfego por região
-    """
-    region_counts = {region: 0 for region in REGIONS}
-    for row in rows:
-        region_counts[row["region"]] += 1
-
-    total = sum(region_counts.values()) or 1
-    return [
-        {
-            "source": region,
-            "visitors": count * 120,
-            "percentage": round((count / total) * 100, 1),
-        }
-        for region, count in region_counts.items()
     ]
 
 
@@ -192,33 +264,11 @@ async def get_overview(
     status: str = Query(default="all"),
     search: str = Query(default=""),
 ):
+    if region != "all":
+        logging.warning("[DEPRECATED] region filter ignored")
     db = SessionLocal()
     try:
-        from sqlalchemy import or_
-        from datetime import datetime, timedelta
-        query = db.query(Product)
-        if period != "all":
-            days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
-            days = days_map.get(period, 365)
-            min_date = datetime.now().date() - timedelta(days=days)
-            query = query.filter(Product.date >= min_date)
-        if category != "all":
-            query = query.filter(Product.category == category)
-        if region != "all":
-            query = query.filter(Product.region == region)
-        if status != "all":
-            query = query.filter(Product.status == status)
-        if search:
-            search_term = f"%{search.strip().lower()}%"
-            query = query.filter(
-                or_(
-                    Product.client.ilike(search_term),
-                    Product.category.ilike(search_term),
-                    Product.region.ilike(search_term),
-                )
-            )
-        rows = [p.to_dict() for p in query.all()]
-        return _build_overview(rows)
+        return _build_overview_db(db)
     finally:
         db.close()
 
@@ -232,73 +282,32 @@ async def get_sales(
     status: str = Query(default="all"),
     search: str = Query(default=""),
 ):
+    if region != "all":
+        logging.warning("[DEPRECATED] region filter ignored")
     db = SessionLocal()
     try:
-        from sqlalchemy import or_
-        from datetime import datetime, timedelta
-        query = db.query(Product)
-        if period != "all":
-            days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
-            days = days_map.get(period, 365)
-            min_date = datetime.now().date() - timedelta(days=days)
-            query = query.filter(Product.date >= min_date)
-        if category != "all":
-            query = query.filter(Product.category == category)
-        if region != "all":
-            query = query.filter(Product.region == region)
-        if status != "all":
-            query = query.filter(Product.status == status)
-        if search:
-            search_term = f"%{search.strip().lower()}%"
-            query = query.filter(
-                or_(
-                    Product.client.ilike(search_term),
-                    Product.category.ilike(search_term),
-                    Product.region.ilike(search_term),
-                )
-            )
-        rows = [p.to_dict() for p in query.all()]
-        return _build_sales(rows)
+        return _build_sales_db(db)
     finally:
         db.close()
 
 
 
-@app.get("/api/traffic")
-async def get_traffic(
-    period: str = Query(default="all"),
-    category: str = Query(default="all"),
-    region: str = Query(default="all"),
-    status: str = Query(default="all"),
-    search: str = Query(default=""),
-):
+
+# Nova rota: Distribuição por Categoria
+@app.get("/api/category-distribution")
+async def get_category_distribution():
     db = SessionLocal()
     try:
-        from sqlalchemy import or_
-        from datetime import datetime, timedelta
-        query = db.query(Product)
-        if period != "all":
-            days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
-            days = days_map.get(period, 365)
-            min_date = datetime.now().date() - timedelta(days=days)
-            query = query.filter(Product.date >= min_date)
-        if category != "all":
-            query = query.filter(Product.category == category)
-        if region != "all":
-            query = query.filter(Product.region == region)
-        if status != "all":
-            query = query.filter(Product.status == status)
-        if search:
-            search_term = f"%{search.strip().lower()}%"
-            query = query.filter(
-                or_(
-                    Product.client.ilike(search_term),
-                    Product.category.ilike(search_term),
-                    Product.region.ilike(search_term),
-                )
-            )
-        rows = [p.to_dict() for p in query.all()]
-        return _build_traffic(rows)
+        return _build_category_distribution_db(db)
+    finally:
+        db.close()
+
+# Nova rota: Receita por Categoria
+@app.get("/api/category-revenue")
+async def get_category_revenue():
+    db = SessionLocal()
+    try:
+        return _build_category_revenue_db(db)
     finally:
         db.close()
 
@@ -316,7 +325,6 @@ async def get_filters():
             {"value": "365d", "label": "1 ano"},
         ],
         "categories": CATEGORIES,
-        "regions": REGIONS,
         "statuses": STATUSES,
     }
 
@@ -331,7 +339,7 @@ async def get_activity():
 async def get_recent_orders():
     db = SessionLocal()
     try:
-        latest = db.query(Product).order_by(Product.date.desc()).limit(10).all()
+        latest = db.query(Product).filter(Product.date != None).order_by(Product.date.desc()).limit(10).all()
         return [
             {
                 "id": f"ORD-{item.id:05d}",

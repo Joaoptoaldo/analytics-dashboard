@@ -1,4 +1,7 @@
+import { useMemo } from 'react'
 import useSWR from 'swr'
+
+import { fetchJson, unwrapApiResponse } from '../lib/api'
 
 type DashboardOverview = {
   total_revenue: number
@@ -11,26 +14,12 @@ type DashboardOverview = {
   conversion_change: number
 }
 
-type SalesPoint = {
-  month: string
-  revenue: number
-  orders: number
-  customers: number
-}
-
-type TrafficPoint = {
-  source: string
-  visitors: number
-  percentage: number
-}
-
 export type ProductItem = {
   id: number
   client: string
   category: string
   revenue: number
   status: string
-  region: string
   date: string
 }
 
@@ -50,24 +39,12 @@ type FilterOption = {
 type FilterOptionsResponse = {
   periods: FilterOption[]
   categories: string[]
-  regions: string[]
   statuses: string[]
-}
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
-
-const fetcher = async <T>(url: string): Promise<T> => {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Erro na API: ${response.status}`)
-  }
-  return response.json() as Promise<T>
 }
 
 export type DashboardFilters = {
   period: string
   category: string
-  region: string
   status: string
   search: string
 }
@@ -79,11 +56,66 @@ type TableParams = {
   sortOrder: 'asc' | 'desc'
 }
 
+export type MetricState = 'valid' | 'no_data' | 'error'
+
+type MetricEnvelope<T> = {
+  state?: MetricState
+  reason?: string
+  data?: T[]
+}
+
+type SalesPoint = {
+  month: string
+  revenue: number | null
+  orders: number | null
+}
+
+type RawCategoryDistributionPoint = {
+  category?: string | null
+  count?: number | null
+  orders?: number | null
+  revenue?: number | null
+}
+
+type CategoryDistributionPoint = {
+  category: string | null
+  revenue: number | null
+  orders: number | null
+}
+
+type RawTopProductPoint = {
+  product?: string | null
+  product_name?: string | null
+  product_id?: number | null
+  revenue?: number | null
+  orders?: number | null
+}
+
+type TopProductPoint = {
+  product: string | null
+  revenue: number | null
+  orders: number | null
+}
+
+type TicketAveragePoint = {
+  month: string
+  avg_ticket: number | null
+}
+
+type MetricResult<T> = {
+  data: T[]
+  state: MetricState
+  reason?: string
+  error?: Error
+  isLoading: boolean
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+
 function toQueryString(filters: DashboardFilters, tableParams?: TableParams) {
   const query = new URLSearchParams({
     period: filters.period,
     category: filters.category,
-    region: filters.region,
     status: filters.status,
     search: filters.search,
   })
@@ -98,56 +130,131 @@ function toQueryString(filters: DashboardFilters, tableParams?: TableParams) {
   return query.toString()
 }
 
+function parseMetricResponse<T>(response: unknown): { data: T[]; state: MetricState; reason?: string } {
+  if (!response || typeof response !== 'object') {
+    return { data: [], state: 'error', reason: 'invalid_response' }
+  }
+
+  const envelope = response as MetricEnvelope<T>
+  if (envelope.state === 'valid') {
+    return { data: unwrapApiResponse<T>(response), state: 'valid', reason: envelope.reason }
+  }
+
+  if (envelope.state === 'no_data') {
+    return { data: [], state: 'no_data', reason: envelope.reason }
+  }
+
+  return { data: [], state: 'error', reason: envelope.reason ?? 'api_error' }
+}
+
+function useMetricEndpoint<T>(key: string, url: string): MetricResult<T> {
+  const { data, error, isLoading } = useSWR<MetricEnvelope<T>>(
+    key,
+    () => fetchJson<MetricEnvelope<T>>(url),
+  )
+
+  const parsed = useMemo(() => parseMetricResponse<T>(data), [data])
+
+  return {
+    data: parsed.data,
+    state: parsed.state,
+    reason: parsed.reason,
+    error: error as Error | undefined,
+    isLoading: isLoading || (!data && !error),
+  }
+}
+
+export function useSales() {
+  const salesMonthly = useMetricEndpoint<SalesPoint>('/api/sales/monthly', `${API_BASE}/sales/monthly`)
+  const ticketAverage = useMetricEndpoint<TicketAveragePoint>('/api/metrics/ticket-average', `${API_BASE}/metrics/ticket-average`)
+
+  return {
+    salesMonthly: salesMonthly.data,
+    salesMonthlyState: salesMonthly.state,
+    salesMonthlyReason: salesMonthly.reason,
+    ticketAverage: ticketAverage.data,
+    ticketAverageState: ticketAverage.state,
+    ticketAverageReason: ticketAverage.reason,
+    isLoading: salesMonthly.isLoading || ticketAverage.isLoading,
+    error: salesMonthly.error ?? ticketAverage.error,
+  }
+}
+
+export function useAnalytics() {
+  const categoryDistribution = useMetricEndpoint<RawCategoryDistributionPoint>('/api/distribution/category', `${API_BASE}/distribution/category`)
+  const topProducts = useMetricEndpoint<RawTopProductPoint>('/api/top/products', `${API_BASE}/top/products`)
+
+  const normalizedCategoryDistribution: CategoryDistributionPoint[] = categoryDistribution.data.map((item) => ({
+    category: item.category ?? null,
+    revenue: item.revenue ?? null,
+    orders: item.orders ?? item.count ?? null,
+  }))
+
+  const normalizedTopProducts: TopProductPoint[] = topProducts.data.map((item) => ({
+    product: item.product ?? item.product_name ?? null,
+    revenue: item.revenue ?? null,
+    orders: item.orders ?? null,
+  }))
+
+  return {
+    categoryDistribution: normalizedCategoryDistribution,
+    categoryDistributionState: categoryDistribution.state,
+    categoryDistributionReason: categoryDistribution.reason,
+    topProducts: normalizedTopProducts,
+    topProductsState: topProducts.state,
+    topProductsReason: topProducts.reason,
+    isLoading: categoryDistribution.isLoading || topProducts.isLoading,
+    error: categoryDistribution.error ?? topProducts.error,
+  }
+}
+
 export function useDashboard(filters: DashboardFilters, tableParams: TableParams) {
   const baseQuery = toQueryString(filters)
   const productsQuery = toQueryString(filters, tableParams)
 
   const { data: overview, error: overviewError } = useSWR<DashboardOverview>(
     `/api/overview?${baseQuery}`,
-    () => fetcher<DashboardOverview>(`${API_BASE}/overview?${baseQuery}`),
+    () => fetchJson<DashboardOverview>(`${API_BASE}/overview?${baseQuery}`),
   )
-  const { data: sales, error: salesError } = useSWR<SalesPoint[]>(
-    `/api/sales?${baseQuery}`,
-    () => fetcher<SalesPoint[]>(`${API_BASE}/sales?${baseQuery}`),
-  )
-  const { data: traffic, error: trafficError } = useSWR<TrafficPoint[]>(
-    `/api/traffic?${baseQuery}`,
-    () => fetcher<TrafficPoint[]>(`${API_BASE}/traffic?${baseQuery}`),
-  )
+
   const useExternal = import.meta.env.VITE_USE_EXTERNAL === 'true'
   const productsPath = useExternal ? 'external-products' : 'products'
 
   const { data: products, error: productsError } = useSWR<ProductsResponse>(
     `/api/${productsPath}?${productsQuery}`,
-    () => fetcher<ProductsResponse>(`${API_BASE}/${productsPath}?${productsQuery}`),
+    () => fetchJson<ProductsResponse>(`${API_BASE}/${productsPath}?${productsQuery}`),
   )
+
   const { data: filterOptions, error: filterOptionsError } = useSWR<FilterOptionsResponse>(
     '/api/filters',
-    () => fetcher<FilterOptionsResponse>(`${API_BASE}/filters`),
+    () => fetchJson<FilterOptionsResponse>(`${API_BASE}/filters`),
   )
 
-  const error =
-    overviewError ??
-    salesError ??
-    trafficError ??
-    productsError ??
-    filterOptionsError
-
-  const isLoading =
-    !overview ||
-    !sales ||
-    !traffic ||
-    !products ||
-    !filterOptions
+  const sales = useSales()
+  const analytics = useAnalytics()
 
   return {
     overview,
-    sales,
-    traffic,
     products,
     filterOptions,
-    isLoading,
-    error,
+    salesMonthly: sales.salesMonthly,
+    salesMonthlyState: sales.salesMonthlyState,
+    salesMonthlyReason: sales.salesMonthlyReason,
+    ticketAverage: sales.ticketAverage,
+    ticketAverageState: sales.ticketAverageState,
+    ticketAverageReason: sales.ticketAverageReason,
+    categoryDistribution: analytics.categoryDistribution,
+    categoryDistributionState: analytics.categoryDistributionState,
+    categoryDistributionReason: analytics.categoryDistributionReason,
+    topProducts: analytics.topProducts,
+    topProductsState: analytics.topProductsState,
+    topProductsReason: analytics.topProductsReason,
+    isLoading:
+      !overview ||
+      !products ||
+      !filterOptions ||
+      sales.isLoading ||
+      analytics.isLoading,
+    error: overviewError ?? productsError ?? filterOptionsError ?? sales.error ?? analytics.error,
   }
 }
-

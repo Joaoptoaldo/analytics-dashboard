@@ -11,7 +11,7 @@ class Product(Base):
     category = Column(String(100))
     revenue = Column(Float)
     status = Column(String(50))
-    region = Column(String(50))
+    region = Column(String(50), nullable=True, comment="deprecated: kept temporarily for backward compatibility")
     date = Column(Date)
     __table_args__ = (UniqueConstraint("external_id", name="uq_external_id"),)
 
@@ -22,6 +22,5 @@ class Product(Base):
             "category": self.category,
             "revenue": float(self.revenue) if self.revenue is not None else 0.0,
             "status": self.status,
-            "region": self.region,
             "date": self.date.strftime("%Y-%m-%d") if self.date else None,
         }

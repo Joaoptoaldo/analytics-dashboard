@@ -16,4 +16,8 @@ def get_products_router(
     sort_by: str = Query(default="date"),
     sort_order: str = Query(default="desc"),
 ):
+    if region != "all":
+        import logging
+
+        logging.warning("[DEPRECATED] region filter ignored")
     return get_products_service(period, category, region, status, search, page, page_size, sort_by, sort_order)

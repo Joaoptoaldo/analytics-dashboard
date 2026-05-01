@@ -13,7 +13,7 @@ def get_total_revenue(period: str = "all", category: str = "all", region: str = 
     if not trace_id:
         trace_id = str(uuid.uuid4())
     try:
-        query = db.query(func.sum(Product.revenue))
+        query = db.query(func.sum(Product.revenue)).filter(Product.date != None)
         if period != "all":
             from datetime import datetime, timedelta
             days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
@@ -23,15 +23,16 @@ def get_total_revenue(period: str = "all", category: str = "all", region: str = 
         if category != "all":
             query = query.filter(Product.category == category)
         if region != "all":
-            query = query.filter(Product.region == region)
+            import logging
+
+            logging.warning("[DEPRECATED] region filter ignored")
         if status != "all":
             query = query.filter(Product.status == status)
         if search:
             search_term = f"%{search.strip().lower()}%"
             query = query.filter(
                 Product.client.ilike(search_term) |
-                Product.category.ilike(search_term) |
-                Product.region.ilike(search_term)
+                Product.category.ilike(search_term)
             )
         result = query.scalar()
         if result is None:

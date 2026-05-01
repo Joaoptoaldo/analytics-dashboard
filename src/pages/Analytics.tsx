@@ -1,29 +1,42 @@
-import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle
+} from '@/components/ui/empty';
+import { useMemo, useState } from 'react';
+import {
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis,
+  YAxis
 } from 'recharts';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useDashboard } from '@/hooks/use-dashboard';
+import { useDashboard } from '../../hooks/use-dashboard';
 
 
 
 export default function Analytics() {
   // Filtros simplificados para análise global
   const [period, setPeriod] = useState('all');
-  const filters = useMemo(() => ({ period, category: 'all', region: 'all', status: 'all', search: '' }), [period]);
+  const filters = useMemo(() => ({ period, category: 'all', status: 'all', search: '' }), [period]);
   const tableParams = useMemo(() => ({ page: 1, pageSize: 50, sortBy: 'date', sortOrder: 'desc' as 'desc' | 'asc' }), []);
-  const { overview, sales, traffic, isLoading, error } = useDashboard(filters, tableParams);
+  const {
+    overview,
+    salesMonthly,
+    salesMonthlyState,
+    salesMonthlyReason,
+    ticketAverage,
+    ticketAverageState,
+    ticketAverageReason,
+    isLoading,
+    error,
+  } = useDashboard(filters, tableParams);
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>;
@@ -75,32 +88,63 @@ export default function Analytics() {
             <CardTitle>Vendas Mensais</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
-              </LineChart>
-            </ResponsiveContainer>
+            {salesMonthlyState === 'error' ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Não foi possível carregar as vendas mensais</EmptyTitle>
+                  <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : salesMonthlyState !== 'valid' || salesMonthly.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Sem dados disponíveis</EmptyTitle>
+                  <EmptyDescription>{salesMonthlyReason || 'Não há registros válidos com date para este gráfico.'}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={salesMonthly}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Distribuição por Região</CardTitle>
+            <CardTitle>Ticket Médio</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={traffic} dataKey="visitors" nameKey="source" outerRadius={100} label>
-                  {traffic?.map((_: unknown, index: number) => (
-                    <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {ticketAverageState === 'error' ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Não foi possível carregar o ticket médio</EmptyTitle>
+                  <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : ticketAverageState !== 'valid' || ticketAverage.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Sem dados disponíveis</EmptyTitle>
+                  <EmptyDescription>{ticketAverageReason || 'Não há valores válidos para este gráfico.'}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={ticketAverage}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="avg_ticket" stroke="#22c55e" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

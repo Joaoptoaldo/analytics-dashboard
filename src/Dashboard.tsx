@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react'
-import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { useSWRConfig } from 'swr'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle
+} from '../components/ui/empty'
+import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { Input } from '../components/ui/input'
 import { Spinner } from '../components/ui/spinner'
 import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
@@ -27,8 +33,11 @@ import {
 } from '../components/ui/table'
 
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -42,7 +51,6 @@ import {
 export default function Dashboard() {
   const [period, setPeriod] = useState('all')
   const [category, setCategory] = useState('all')
-  const [region, setRegion] = useState('all')
   const [status, setStatus] = useState('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -52,14 +60,29 @@ export default function Dashboard() {
 
   const debouncedSearch = useDebounce(search, 400);
   const filters = useMemo(
-    () => ({ period, category, region, status, search: debouncedSearch }),
-    [period, category, region, status, debouncedSearch],
+    () => ({ period, category, status, search: debouncedSearch }),
+    [period, category, status, debouncedSearch],
   );
   const tableParams = useMemo(
     () => ({ page, pageSize: 8, sortBy, sortOrder }),
     [page, sortBy, sortOrder],
   );
-  const { overview, sales, traffic, products, filterOptions, isLoading, error } = useDashboard(filters, tableParams);
+  const {
+    overview,
+    salesMonthly,
+    salesMonthlyState,
+    salesMonthlyReason,
+    categoryDistribution,
+    categoryDistributionState,
+    categoryDistributionReason,
+    topProducts,
+    topProductsState,
+    topProductsReason,
+    products,
+    filterOptions,
+    isLoading,
+    error,
+  } = useDashboard(filters, tableParams);
   const { mutate } = useSWRConfig()
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
@@ -76,7 +99,7 @@ export default function Dashboard() {
       if (!resp.ok) throw new Error('Erro ao sincronizar')
       setSyncSuccess(true)
       // revalidate both possible cache keys
-      const productsQuery = `period=${filters.period}&category=${filters.category}&region=${filters.region}&status=${filters.status}&search=${filters.search}&page=${tableParams.page}&page_size=${tableParams.pageSize}&sort_by=${tableParams.sortBy}&sort_order=${tableParams.sortOrder}`
+      const productsQuery = `period=${filters.period}&category=${filters.category}&status=${filters.status}&search=${filters.search}&page=${tableParams.page}&page_size=${tableParams.pageSize}&sort_by=${tableParams.sortBy}&sort_order=${tableParams.sortOrder}`
       await mutate(`/api/external-products?${productsQuery}`)
       await mutate(`/api/products?${productsQuery}`)
     } catch (e: any) {
@@ -104,7 +127,6 @@ export default function Dashboard() {
   const resetFilters = () => {
     setPeriod('all')
     setCategory('all')
-    setRegion('all')
     setStatus('all')
     setSearch('')
     setPage(1)
@@ -124,13 +146,14 @@ export default function Dashboard() {
 
   const periodOptions = filterOptions?.periods || []
   const categories = filterOptions?.categories || []
-  const regions = filterOptions?.regions || []
   const statuses = filterOptions?.statuses || []
   const productsItems = products?.items || []
-  const trafficData = traffic || []
+  const salesMonthlyData = salesMonthly || []
+  const categoryDistributionData = categoryDistribution || []
+  const topProductsData = topProducts || []
   const hasNoResults = !productsItems.length
   const hasActiveFilters =
-    period !== 'all' || category !== 'all' || region !== 'all' || status !== 'all' || search.trim() !== ''
+    period !== 'all' || category !== 'all' || status !== 'all' || search.trim() !== ''
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6']
 
   return (
@@ -180,19 +203,7 @@ export default function Dashboard() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={region} onValueChange={(value) => onFilterChange(setRegion, value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Região" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas regiões</SelectItem>
-                {regions.map((item: string) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Região removida: não disponível na API externa */}
             <Select value={status} onValueChange={(value) => onFilterChange(setStatus, value)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Status" />
@@ -207,7 +218,7 @@ export default function Dashboard() {
               </SelectContent>
             </Select>
             <Input
-              placeholder="Buscar cliente/categoria/região"
+              placeholder="Buscar cliente/categoria"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value)
@@ -261,32 +272,91 @@ export default function Dashboard() {
             <CardTitle>Vendas Mensais</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
-              </LineChart>
-            </ResponsiveContainer>
+            {salesMonthlyState === 'error' ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Não foi possível carregar as vendas mensais</EmptyTitle>
+                  <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : salesMonthlyState !== 'valid' || salesMonthlyData.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Sem dados disponíveis</EmptyTitle>
+                  <EmptyDescription>{salesMonthlyReason || 'Não há registros válidos com date para este gráfico.'}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={salesMonthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Distribuição por Região</CardTitle>
+            <CardTitle>Distribuição por Categoria</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={trafficData} dataKey="visitors" nameKey="source" outerRadius={100} label>
-                  {trafficData.map((_: unknown, index: number) => (
-                    <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {categoryDistributionState === 'error' ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Não foi possível carregar a distribuição</EmptyTitle>
+                  <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : categoryDistributionState !== 'valid' || categoryDistributionData.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Sem dados disponíveis</EmptyTitle>
+                  <EmptyDescription>{categoryDistributionReason || 'Não há categorias válidas para este gráfico.'}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <ResponsiveContainer width="100%" height="50%">
+                <PieChart>
+                  <Pie data={categoryDistributionData} dataKey="orders" nameKey="category" outerRadius={70} label>
+                    {categoryDistributionData.map((_: unknown, index: number) => (
+                      <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+            <div style={{ height: 8 }} />
+            {topProductsState === 'error' ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Não foi possível carregar os top products</EmptyTitle>
+                  <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : topProductsState !== 'valid' || topProductsData.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>Sem dados disponíveis</EmptyTitle>
+                  <EmptyDescription>{topProductsReason || 'Não há produtos válidos para este gráfico.'}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <ResponsiveContainer width="100%" height="45%">
+                <BarChart data={topProductsData} margin={{ left: 10, right: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="product" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="revenue" fill="#4f46e5" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -320,13 +390,12 @@ export default function Dashboard() {
                 </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data</TableHead>
-                <TableHead>Região</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {hasNoResults && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                     Nenhum resultado com os filtros atuais. Ajuste os filtros ou limpe para ver todos os dados.
                   </TableCell>
                 </TableRow>
@@ -343,7 +412,6 @@ export default function Dashboard() {
                     </Badge>
                   </TableCell>
                   <TableCell>{item.date}</TableCell>
-                  <TableCell>{item.region}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

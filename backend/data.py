@@ -1,9 +1,8 @@
+
 from datetime import datetime, timedelta
-import random
 from typing import Any
 
 CATEGORIES = ["SaaS", "E-commerce", "Fintech", "Education", "Health"]
-REGIONS = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"]
 STATUSES = ["Completed", "Processing", "Shipped", "Pending"]
 CLIENTS = [
     "Alfa Tech",
@@ -18,16 +17,11 @@ CLIENTS = [
     "Pulse Group",
 ]
 
-"""
-Funções de seed removidas deste arquivo.
-Utilize backend/seeds/seed_data.py para popular o banco em dev/test.
-"""
 
 def _apply_filters(
     rows: list[dict[str, Any]],
     period: str = "all",
     category: str = "all",
-    region: str = "all",
     status: str = "all",
     search: str = "",
 ) -> list[dict[str, Any]]:
@@ -44,8 +38,6 @@ def _apply_filters(
         ]
     if category != "all":
         filtered = [row for row in filtered if row["category"] == category]
-    if region != "all":
-        filtered = [row for row in filtered if row["region"] == region]
     if status != "all":
         filtered = [row for row in filtered if row["status"] == status]
     if search:
@@ -55,6 +47,5 @@ def _apply_filters(
             for row in filtered
             if search_term in row["client"].lower()
             or search_term in row["category"].lower()
-            or search_term in row["region"].lower()
         ]
     return filtered

@@ -15,8 +15,15 @@ def get_external_products(
     # Retorna apenas dados persistidos; só haverá dados após sincronização manual
     rows = get_persisted_products()
     reverse = sort_order == "desc"
-    if sort_by in {"id", "client", "category", "revenue", "status", "region", "date"}:
-        rows = sorted(rows, key=lambda x: x[sort_by], reverse=reverse)
+    if sort_by in {"id", "client", "category", "revenue", "status", "date"}:
+        # Ordenação NULL-safe: None sempre no final
+        def null_safe(val):
+            v = val[sort_by]
+            # Para datas, garantir que None sempre vá para o final
+            if v is None:
+                return (1, None)
+            return (0, v)
+        rows = sorted(rows, key=null_safe, reverse=reverse)
     total = len(rows)
     total_pages = max((total + page_size - 1) // page_size, 1)
     if page > total_pages:

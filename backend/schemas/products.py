@@ -7,8 +7,7 @@ class ProductItem(BaseModel):
     category: str
     revenue: float
     status: str
-    region: str
-    date: str
+    date: str | None
 
 class ProductsResponse(BaseModel):
     items: List[ProductItem]

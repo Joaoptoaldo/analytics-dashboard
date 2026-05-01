@@ -18,7 +18,6 @@ import { useDashboard, type ProductItem } from '@/hooks/use-dashboard';
 import { useEffect, useMemo, useState } from 'react';
 
 export default function Users() {
-  const [region, setRegion] = useState('all');
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -65,7 +64,7 @@ export default function Users() {
   }
 
   // Filtros para buscar todos os produtos e extrair clientes únicos
-  const filters = useMemo(() => ({ period: 'all', category, region, status: 'all', search }), [category, region, search]);
+  const filters = useMemo(() => ({ period: 'all', category, status: 'all', search }), [category, search]);
   const tableParams = useMemo(() => ({ page: 1, pageSize: 50, sortBy: 'client', sortOrder: 'asc' as 'asc' | 'desc' }), [filters]);
   const { products, filterOptions, isLoading, error } = useDashboard(filters, tableParams);
 
@@ -100,7 +99,6 @@ export default function Users() {
   const totalPages = Math.ceil(totalUsers / pageSize) || 1;
 
   const resetFilters = () => {
-    setRegion('all');
     setCategory('all');
     setSearch('');
     setPage(1);
@@ -129,20 +127,7 @@ export default function Users() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="block text-xs mb-1">Região</label>
-              <Select value={region} onValueChange={setRegion}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Região" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {filterOptions?.regions.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Região removida: não disponível na API externa */}
             <div>
               <label className="block text-xs mb-1">Busca</label>
               <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar usuário..." className="w-48" />
@@ -168,7 +153,7 @@ export default function Users() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Categoria</TableHead>
-                    <TableHead>Região</TableHead>
+                    {/* Região removida */}
                     <TableHead>Status</TableHead>
                     <TableHead>Ações</TableHead>
                     <TableHead>Última Atividade</TableHead>
@@ -181,7 +166,7 @@ export default function Users() {
                       <TableRow key={user.client}>
                         <TableCell>{merged.client}</TableCell>
                         <TableCell>{merged.category}</TableCell>
-                        <TableCell>{merged.region}</TableCell>
+                        {/* Região removida */}
                         <TableCell>
                           <Badge>{blockedUsers.has(user.client) ? 'Blocked' : merged.status}</Badge>
                         </TableCell>
@@ -200,10 +185,7 @@ export default function Users() {
                                     <Label>Categoria</Label>
                                     <Input value={merged.category} onChange={e => saveEdit(user.client, { category: (e.target as HTMLInputElement).value })} />
                                   </div>
-                                  <div>
-                                    <Label>Região</Label>
-                                    <Input value={merged.region} onChange={e => saveEdit(user.client, { region: (e.target as HTMLInputElement).value })} />
-                                  </div>
+                                  {/* Região removida */}
                                   <div>
                                     <Label>Status</Label>
                                     <Input value={merged.status} onChange={e => saveEdit(user.client, { status: (e.target as HTMLInputElement).value })} />

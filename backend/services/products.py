@@ -3,10 +3,13 @@ from backend.db import SessionLocal
 from backend.models.product import Product
 from sqlalchemy import or_, desc, asc
 from datetime import datetime, timedelta
+import logging
 
 def get_products_service(period, category, region, status, search, page, page_size, sort_by, sort_order):
-    allowed_sort = ["id", "client", "revenue", "date", "category", "region"]
+    allowed_sort = ["id", "client", "revenue", "date", "category"]
     sort_field = sort_by if sort_by in allowed_sort else "date"
+    if region != "all":
+        logging.warning("[DEPRECATED] region filter ignored")
     
     db = SessionLocal()
     try:
@@ -20,8 +23,6 @@ def get_products_service(period, category, region, status, search, page, page_si
             query = query.filter(Product.date >= min_date)
         if category != "all":
             query = query.filter(Product.category == category)
-        if region != "all":
-            query = query.filter(Product.region == region)
         if status != "all":
             query = query.filter(Product.status == status)
         if search:
@@ -30,7 +31,6 @@ def get_products_service(period, category, region, status, search, page, page_si
                 or_(
                     Product.client.ilike(search_term),
                     Product.category.ilike(search_term),
-                    Product.region.ilike(search_term),
                 )
             )
 
