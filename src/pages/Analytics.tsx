@@ -117,7 +117,7 @@ export default function Analytics() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Ticket Médio</CardTitle>
+            <CardTitle>Receita Média</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
             {ticketAverageState === 'error' ? (

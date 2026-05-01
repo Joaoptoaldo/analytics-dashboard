@@ -71,6 +71,25 @@ VITE_ALLOW_SEED=false
 Variaveis obrigatorias para setup do backend:
 - `VITE_DATABASE_URL`
 - `VITE_ALLOW_SEED`
+### 2. Variaveis de ambiente
+Crie um arquivo `.env` na raiz com as variaveis:
+
+### 2. Variaveis de ambiente
+```env
+# === Frontend (Vite - prefixo VITE_) ===
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_USE_EXTERNAL=true
+
+# === Backend (FastAPI - sem prefixo) ===
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+DATABASE_URL=sqlite:///./backend.db
+ENV=development
+ALLOW_SEED=false
+```
+
+**Variaveis obrigatorias:**
+- Frontend: `VITE_API_BASE_URL`
+- Backend: `DATABASE_URL`, `ENV`, `ALLOW_SEED`
 
 ### 3. Instalando dependencias
 
@@ -127,6 +146,45 @@ curl http://127.0.0.1:8000/api/sales
 ```
 
 > Observacao: a sincronizacao usa DummyJSON como fonte externa e persiste os dados no banco.
+
+## Principais Endpoints
+
+## Deployment em Produção
+
+### Backend (FastAPI + Gunicorn)
+
+```bash
+# Gerar requirements.txt (caso ainda não exista)
+cd backend
+pip freeze > requirements.txt
+
+# Instalar dependências em produção
+pip install -r requirements.txt
+
+# Executar com gunicorn (4 workers, recomendado)
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker backend.main:app --bind 0.0.0.0:8000
+```
+
+### Frontend (Vite + Build)
+
+```bash
+# Build para produção
+pnpm run build
+
+# Servir a pasta dist/ com um servidor estático (ex: nginx, Vercel, etc.)
+# Ou usar 'vite preview' para teste local
+pnpm run preview
+```
+
+### Variáveis de Ambiente em Produção
+
+Certifique-se de definir:
+- `VITE_API_BASE_URL` → URL da API em produção (ex: `https://api.example.com`)
+- `DATABASE_URL` → Connection string PostgreSQL (ex: `postgresql://user:pass@host/dbname`)
+- `CORS_ORIGINS` → Domínios permitidos para CORS
+- `ENV=production` → Desabilita seed automático
+
+> **Importante:** Nunca exponha credenciais. Use secrets management da sua plataforma (Railway, Heroku, AWS, etc.).
 
 ## Principais Endpoints
 

@@ -349,7 +349,10 @@ def get_top_products(limit: int = 10) -> dict:
 
 
 def get_ticket_average() -> dict:
-    """_summary_: Calcula o ticket medio mensal (AVG de revenue por mes).
+    """_summary_: Calcula a RECEITA MÉDIA mensal (AVG de revenue por mês), NÃO é ticket real.
+    
+    NOTA: "client" no banco representa nome do produto, não cliente. O cálculo retorna AVG(revenue).
+    Para calcular ticket real seria necessário: SUM(revenue) / COUNT(distinct customers).
 
     Returns:
         dict: _description_: Resposta padronizada com `state` e `data`. Quando `valid`, cada item contem `month`, `avg_ticket`, `orders` e `date_source`.

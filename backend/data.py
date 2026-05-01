@@ -60,3 +60,38 @@ def _apply_filters(
             or search_term in row["category"].lower()
         ]
     return filtered
+
+
+def _build_seed_data() -> list[dict[str, Any]]:
+    """_summary_: Constrói dataset determinístico de dados fictícios para seed do banco em desenvolvimento.
+    
+    Gera 100 registros com variação realista: datas distribuídas em 12 meses,
+    clientes e categorias aleatórias, receitas entre 100 e 5000, status variados.
+    Usa seed aleatório fixo para garantir consistência em execuções consecutivas.
+
+    Returns:
+        list[dict[str, Any]]: Lista com 100 dicionários contendo {client, category, revenue, status, date}.
+    """
+    import random
+    
+    # Seed determinístico para reprodutibilidade
+    random.seed(42)
+    
+    data = []
+    base_date = datetime(2024, 1, 1)
+    
+    # Gerar 100 registros distribuídos ao longo de 12 meses
+    for i in range(100):
+        # Data distribuída em 12 meses (aproximadamente 8-9 por mês)
+        days_offset = (i * 3) % 365  # Distribui ao longo do ano
+        record_date = base_date + timedelta(days=days_offset)
+        
+        data.append({
+            "client": random.choice(CLIENTS),
+            "category": random.choice(CATEGORIES),
+            "revenue": round(random.uniform(100, 5000), 2),
+            "status": random.choice(STATUSES),
+            "date": record_date.strftime("%Y-%m-%d"),
+        })
+    
+    return data
