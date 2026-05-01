@@ -1,12 +1,12 @@
-# Contexto do Projeto
+﻿# Contexto do Projeto
 
-Você está me ajudando a construir o **Dashboard de Análise**, um sistema full stack com foco em visualização de dados, KPIs, filtros, tabelas e gráficos com aparência de produto SaaS.
+Voce esta me ajudando a construir o **Dashboard de Analise**, um sistema full stack com foco em visualizacao de dados, KPIs, filtros, tabelas e graficos com aparencia de produto SaaS.
 
-O projeto já possui um **MVP funcional** e o objetivo agora é evoluir a base atual com mais consistência arquitetural, melhor documentação, backend mais robusto e experiência mais próxima de produção.
+O projeto ja possui um **MVP funcional** e o objetivo agora e evoluir a base atual com mais consistencia arquitetural, melhor documentacao, backend mais robusto e experiencia mais proxima de producao.
 
 ---
 
-# Estado Real do Repositório
+# Estado Real do Repositorio
 
 ## Frontend atual
 
@@ -30,13 +30,13 @@ Arquivos principais atuais:
 * `components/ui/*`
 * `app/globals.css`
 
-Observações importantes:
+Observacoes importantes:
 
-* O projeto **não está em JavaScript puro**; a base atual usa TypeScript.
-* Há arquivos residuais em `app/` que vieram de uma estrutura inspirada em Next.js, mas o entrypoint real hoje é o Vite em `src/main.tsx`.
-* A UI principal atual está concentrada em `src/App.tsx` e `src/Dashboard.tsx`.
-* O CSS global ativo está sendo importado de `app/globals.css` em `src/main.tsx`.
-* Ainda existem duplicações utilitárias e arquivos legados que devem ser tratados com cuidado antes de qualquer limpeza estrutural.
+* O projeto **nao esta em JavaScript puro**; a base atual usa TypeScript.
+* Ha arquivos residuais em `app/` que vieram de uma estrutura inspirada em Next.js, mas o entrypoint real hoje e o Vite em `src/main.tsx`.
+* A UI principal atual esta concentrada em `src/App.tsx` e `src/Dashboard.tsx`.
+* O CSS global ativo esta sendo importado de `app/globals.css` em `src/main.tsx`.
+* Ainda existem duplicacoes utilitarias e arquivos legados que devem ser tratados com cuidado antes de qualquer limpeza estrutural.
 
 ## Backend atual
 
@@ -52,41 +52,40 @@ Arquivos principais atuais:
 * `backend/main.py`
 * `backend/pyproject.toml`
 
-Observações importantes:
+Observacoes importantes:
 
-* O backend estava originalmente concentrado em um único arquivo, mas foi evoluindo: hoje já existe integração com `models/`, `services/` e `routers/` e uso de SQLAlchemy para persistência.
-* Produtos externos podem ser sincronizados e persistidos em SQLite através do endpoint `POST /api/external-products/sync`.
-* A base foi atualizada para que dados apresentados no dashboard venham do banco, não mais de um dataset em memória. Ao trabalhar com o backend, preserve compatibilidade com os endpoints existentes.
+* O backend estava originalmente concentrado em um unico arquivo, mas foi evoluindo: hoje ja existe integracao com `models/`, `services/` e `routers/` e uso de SQLAlchemy para persistencia.
+* Produtos externos sao sincronizados da DummyJSON e persistidos atraves do endpoint `POST /api/external-products/sync`.
+* A base foi atualizada para que dados apresentados no dashboard venham do banco, nao mais de um dataset em memoria. Ao trabalhar com o backend, preserve compatibilidade com os endpoints existentes.
 
 ---
 
-# Direção Técnica do Projeto
+# Direcao Tecnica do Projeto
 
-## O que já existe
+## O que ja existe
 
-Hoje o projeto já entrega:
+Hoje o projeto ja entrega:
 
 * sidebar responsiva
 * dashboard com KPIs
-* gráfico de linha
-* gráfico de pizza
-* tabela com paginação
+* grafico de linha
+* grafico de pizza
+* tabela com paginacao
 * filtros funcionais conectados ao backend
-* ordenação na tabela
+* ordenacao na tabela
 * consumo de API com SWR
-* seed mock consistente para demonstração
 * contrato frontend/backend funcional via endpoints FastAPI
 
-## O que ainda é objetivo de evolução
+## O que ainda e objetivo de evolucao
 
-Evoluções planejadas (prioritárias):
+Evolucoes planejadas (prioritarias):
 
-* consolidar a modularização do backend (rotas, services, modelos separados)
-* preparar migração para PostgreSQL a partir de uma camada de acesso bem definida
-* separar melhor os componentes de dashboard e reduzir duplicações
-* adicionar autenticação e autorização
+* consolidar a modularizacao do backend (rotas, services, modelos separados)
+* preparar migracao para PostgreSQL a partir de uma camada de acesso bem definida
+* separar melhor os componentes de dashboard e reduzir duplicacoes
+* adicionar autenticacao e autorizacao
 * melhorar performance do bundle frontend
-* fortalecer documentação e testes automatizados
+* fortalecer documentacao e testes automatizados
 
 ---
 
@@ -94,55 +93,85 @@ Evoluções planejadas (prioritárias):
 
 ```txt
 dashboard-de-analise/
-├── .github/
-│   └── IA-instruções.md
-├── app/
-│   ├── globals.css
-│   └── page.tsx
-├── backend/
-│   ├── main.py
-│   ├── pyproject.toml
-│   └── uv.lock
-├── components/
-│   ├── theme-provider.tsx
-│   └── ui/
-├── hooks/
-│   ├── use-dashboard.ts
-│   ├── use-mobile.ts
-│   └── use-toast.ts
-├── lib/
-│   ├── utils.js
-│   └── utils.ts
-├── public/
-│   └── icon.svg
-├── src/
-│   ├── App.tsx
-│   ├── Dashboard.tsx
-│   └── main.tsx
-├── styles/
-│   └── globals.css
-├── index.html
-├── jsconfig.json
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
+|-- .github/
+|   `-- IA-instrucoes.md
+|-- app/
+|   |-- globals.css
+|   `-- page.tsx
+|-- backend/
+|   |-- main.py
+|   |-- pyproject.toml
+|   `-- uv.lock
+|-- components/
+|   |-- theme-provider.tsx
+|   `-- ui/
+|-- hooks/
+|   |-- use-dashboard.ts
+|   |-- use-mobile.ts
+|   `-- use-toast.ts
+|-- lib/
+|   |-- utils.js
+|   `-- utils.ts
+|-- public/
+|   `-- icon.svg
+|-- src/
+|   |-- App.tsx
+|   |-- Dashboard.tsx
+|   `-- main.tsx
+|-- index.html
+|-- package.json
+|-- tsconfig.json
+|-- vite.config.ts
+`-- README.md
 ```
 
 ---
 
-# Regras de Colaboração
+# Variaveis de Ambiente
+
+Padrao do projeto:
+
+* usar prefixo `VITE_` no `.env` da raiz
+
+Variaveis obrigatorias para setup:
+
+* `VITE_API_BASE_URL`
+* `VITE_USE_EXTERNAL`
+* `VITE_CORS_ORIGINS`
+* `VITE_DATABASE_URL`
+* `VITE_ALLOW_SEED`
+
+---
+
+# Endpoints Relevantes
+
+* `GET /api/products`
+* `GET /api/external-products`
+* `POST /api/external-products/sync`
+* `GET /api/overview`
+* `GET /api/sales`
+* `GET /api/sales/monthly`
+* `GET /api/sales/trend`
+* `GET /api/distribution/category`
+* `GET /api/top/products`
+* `GET /api/metrics/ticket-average`
+* `GET /api/activity`
+* `GET /api/filters`
+
+---
+
+# Regras de Colaboracao
 
 ## Regra principal
 
-Antes de alterar código, instalar dependências, refatorar estrutura ou tomar decisão com impacto arquitetural:
+Antes de alterar codigo, instalar dependencias, refatorar estrutura ou tomar decisao com impacto arquitetural:
 
 1. explique o que pretende fazer
 2. diga por que isso faz sentido no contexto atual do projeto
 3. destaque impactos, tradeoffs e arquivos afetados
-4. aguarde minha autorização explícita
+4. aguarde minha autorizacao explicita
 
-Autorizações válidas:
+Autorizacoes validas:
 
 * `pode fazer`
 * `vai`
@@ -152,75 +181,74 @@ Autorizações válidas:
 
 ## Quando eu pedir ajuda
 
-* explique a lógica antes do código
-* conecte a solução à arquitetura atual do projeto
+* explique a logica antes do codigo
+* conecte a solucao a arquitetura atual do projeto
 * diferencie claramente:
   * estado atual
-  * dívida técnica
-  * direção futura
-* aponte riscos técnicos e consequências
-* priorize soluções limpas e sustentáveis
+  * divida tecnica
+  * direcao futura
+* aponte riscos tecnicos e consequencias
+* priorize solucoes limpas e sustentaveis
 * evite gambiarra
 
-## Quando sugerir código
+## Quando sugerir codigo
 
-* informe quais arquivos serão alterados
-* diga se a mudança é local ou se impacta outras partes
-* avise quando houver débito técnico sendo criado
-* se houver mais de um caminho razoável, apresente as opções antes de implementar
+* informe quais arquivos serao alterados
+* diga se a mudanca e local ou se impacta outras partes
+* avise quando houver debito tecnico sendo criado
+* se houver mais de um caminho razoavel, apresente as opcoes antes de implementar
 
 ## Se eu errar algo
 
-* corrija de forma didática
+* corrija de forma didatica
 * explique a causa raiz
 * me ajude a evitar repetir o erro
-* mostre como a correção se encaixa na arquitetura geral
+* mostre como a correcao se encaixa na arquitetura geral
 
 ---
 
-# Regras Técnicas
+# Regras Tecnicas
 
 ## Sobre a stack
 
-* considere **TypeScript** como padrão atual do frontend
-* não proponha voltar para JavaScript sem alinhamento explícito
+* considere **TypeScript** como padrao atual do frontend
+* nao proponha voltar para JavaScript sem alinhamento explicito
 * preserve Vite como bundler atual
-* use a arquitetura existente como ponto de partida, não como se já fosse a arquitetura final
+* use a arquitetura existente como ponto de partida, nao como se ja fosse a arquitetura final
 
 ## Sobre frontend
 
 * preservar o design system baseado em shadcn/ui e Radix
-* evitar duplicação de hooks, utils e estilos
-* preferir componentização clara quando isso realmente melhorar manutenção
-* não criar páginas falsas só para parecer completo
-* filtros devem continuar sendo reais, não decorativos
-* tratar `app/` como resíduo de transição até que haja decisão explícita de remover ou reaproveitar essa estrutura
+* evitar duplicacao de hooks, utils e estilos
+* preferir componentizacao clara quando isso realmente melhorar manutencao
+* nao criar paginas falsas so para parecer completo
+* filtros devem continuar sendo reais, nao decorativos
+* tratar `app/` como residuo de transicao ate que haja decisao explicita de remover ou reaproveitar essa estrutura
 
 ## Sobre backend
 
 * manter compatibilidade com o contrato atual consumido pelo frontend
 * evitar quebrar endpoints existentes sem avisar antes
-* o seed mock foi substituído progressivamente por persistência (SQLite + SQLAlchemy). Ao propor mudanças, documente o impacto e migrações necessárias
-* quando propor persistência adicional, priorizar soluções que facilitem migração para bancos gerenciados
+* quando propor persistencia adicional, priorizar solucoes que facilitem migracao para bancos gerenciados
 
-## Sobre documentação
+## Sobre documentacao
 
-* sempre atualizar docs quando a implementação mudar de direção
-* nunca descrever como “pronto” algo que ainda é apenas objetivo futuro
-* diferenciar claramente visão do produto versus código já implementado
-* não citar arquivos, módulos ou fluxos que não existam mais no repositório atual
+* sempre atualizar docs quando a implementacao mudar de direcao
+* nunca descrever como "pronto" algo que ainda e apenas objetivo futuro
+* diferenciar claramente visao do produto versus codigo ja implementado
+* nao citar arquivos, modulos ou fluxos que nao existam mais no repositorio atual
 
 ---
 
 # O que Evitar
 
-* assumir que a arquitetura alvo já está pronta
-* misturar documentação aspiracional com documentação operacional
+* assumir que a arquitetura alvo ja esta pronta
+* misturar documentacao aspiracional com documentacao operacional
 * criar estruturas grandes sem necessidade imediata
 * instalar pacotes sem explicar a justificativa
-* refatorar por estética sem ganho claro
+* refatorar por estetica sem ganho claro
 * manter arquivos duplicados por muito tempo
-* esconder riscos de manutenção
+* esconder riscos de manutencao
 
 ---
 
@@ -237,26 +265,26 @@ Exemplos:
 * `docs:`
 * `test:`
 
-Nunca sugerir commits genéricos.
+Nunca sugerir commits genericos.
 
 ---
 
-# Orientação de Evolução
+# Orientacao de Evolucao
 
 Prioridades gerais do projeto:
 
-1. alinhar documentação com o código real
-2. reduzir inconsistências e duplicações
-3. modularizar frontend e backend sem refatoração destrutiva
-4. introduzir persistência real
-5. preparar autenticação e expansão funcional
+1. alinhar documentacao com o codigo real
+2. reduzir inconsistencias e duplicacoes
+3. modularizar frontend e backend sem refatoracao destrutiva
+4. introduzir persistencia real
+5. preparar autenticacao e expansao funcional
 6. melhorar qualidade de build, performance e deploy
 
-Ao sugerir próximos passos, priorize:
+Ao sugerir proximos passos, priorize:
 
-* coerência arquitetural
-* manutenção futura
-* clareza para portfólio profissional
-* progressão incremental sem quebrar o MVP atual
-* comunicação clara sobre o que é código real versus objetivo futuro
-* sempre destacar o impacto e tradeoffs de cada mudança proposta
+* coerencia arquitetural
+* manutencao futura
+* clareza para portfolio profissional
+* progressao incremental sem quebrar o MVP atual
+* comunicacao clara sobre o que e codigo real versus objetivo futuro
+* sempre destacar o impacto e tradeoffs de cada mudanca proposta
