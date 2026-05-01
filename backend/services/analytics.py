@@ -26,6 +26,7 @@ def get_sales_monthly() -> dict:
     db = SessionLocal()
     try:
         valid_count = db.query(func.count(Product.id)).filter(Product.date.isnot(None)).scalar() or 0
+        logging.info(f"[ANALYTICS][sales/monthly] valid_count: {valid_count}")
         if valid_count == 0:
             logging.info("[ANALYTICS][sales/monthly] no_data: no records with valid date")
             return _response("no_data", reason="no_valid_date")
@@ -42,6 +43,7 @@ def get_sales_monthly() -> dict:
             .order_by(month_expr.asc())
             .all()
         )
+        logging.info(f"[ANALYTICS][sales/monthly] rows after grouping: {len(rows)}")
 
         if not rows:
             logging.info("[ANALYTICS][sales/monthly] no_data: grouped query returned no rows")

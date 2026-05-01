@@ -14,6 +14,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
     """Busca produtos do DummyJSON e normaliza para o formato usado pelo projeto.
 
     Retorna lista de dicts com chaves: id, client, category, revenue, status, date
+    Data é extraída de meta.createdAt (fonte primária) com fallback para campos top-level.
     """
     resp = requests.get(DUMMYJSON_URL, timeout=10)
     resp.raise_for_status()
@@ -27,22 +28,35 @@ def fetch_external_products() -> List[Dict[str, Any]]:
         except Exception:
             revenue = 0.0
 
-        # Preferir campo de data da API se existir (ex.: 'date', 'createdAt')
-        date_str = item.get("date") or item.get("createdAt") or item.get("creation_date")
+        # Extrair data: meta.createdAt (primária) > date/createdAt/creation_date (fallback)
+        date_str = None
+        
+        # Tentar meta.createdAt primeiro (fonte primária: DummyJSON)
+        meta = item.get("meta", {})
+        if meta and "createdAt" in meta:
+            date_str = meta.get("createdAt")
+        
+        # Fallback para campos top-level (compatibilidade com outras APIs)
+        if not date_str:
+            date_str = item.get("date") or item.get("createdAt") or item.get("creation_date")
+        
+        date_val = None
         if date_str:
             try:
-                # aceitar formatos ISO simples
-                date_val = datetime.fromisoformat(date_str).date()
+                # Aceitar formatos ISO 8601 completos (ex: 2025-04-30T09:41:02.053Z)
+                # Replace 'Z' com '+00:00' para compatibilidade com fromisoformat
+                normalized = date_str.replace('Z', '+00:00')
+                date_val = datetime.fromisoformat(normalized).date()
             except Exception:
-                # fallback para string YYYY-MM-DD
+                # Fallback para string YYYY-MM-DD
                 try:
                     date_val = datetime.strptime(date_str[:10], "%Y-%m-%d").date()
                 except Exception:
                     date_val = None
-        else:
-            date_val = None
+        
+        if not date_val:
             # Log estruturado para rastreabilidade
-            print(f"[DATA_INTEGRITY][WARN] Produto id={item.get('id', idx)} sem campo 'date' na API externa. Persistindo como NULL.")
+            print(f"[DATA_INTEGRITY][WARN] Produto id={item.get('id', idx)} sem campo 'date' válido. meta.createdAt={meta.get('createdAt')}")
 
         # Mapeamento determinístico para status (não aleatório)
         key2 = int(item.get("id", idx)) if str(item.get("id", idx)).isdigit() else idx
