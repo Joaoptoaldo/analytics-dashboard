@@ -28,5 +28,3 @@ def init_db():
         # O seed NUNCA roda automaticamente em produção!
         from backend.seeds.seed_data import seed_database
         print("[INFO] Ambiente de desenvolvimento detectado. Para popular o banco com seed, execute manualmente: backend/seeds/seed_data.py")
-
-print("Database URL:", DATABASE_URL)
