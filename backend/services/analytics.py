@@ -1,4 +1,6 @@
 import logging
+from collections import defaultdict
+from datetime import date, timedelta
 
 from sqlalchemy import desc, func, nullslast
 
@@ -6,6 +8,18 @@ from backend.db import SessionLocal
 from backend.models.product import Product
 
 DATE_SOURCE = "external.meta.createdAt"
+TREND_RANGE_DAYS = {
+    "30d": 30,
+    "90d": 90,
+    "180d": 180,
+    "1y": 365,
+}
+TREND_RANGE_GRANULARITY = {
+    "30d": "day",
+    "90d": "day",
+    "180d": "week",
+    "1y": "month",
+}
 
 
 def _response(state: str, data: list[dict] | None = None, reason: str | None = None) -> dict:
@@ -20,6 +34,35 @@ def _month_bucket_expr(db):
     if dialect_name == "postgresql":
         return func.to_char(Product.date, "YYYY-MM")
     return func.strftime("%Y-%m", Product.date)
+
+
+def _trend_bucket_start(day: date, range_value: str) -> date:
+    granularity = TREND_RANGE_GRANULARITY[range_value]
+    if granularity == "day":
+        return day
+    if granularity == "week":
+        return day - timedelta(days=day.weekday())
+    return day.replace(day=1)
+
+
+def _trend_period_label(bucket_start: date, range_value: str) -> str:
+    granularity = TREND_RANGE_GRANULARITY[range_value]
+    if granularity == "day":
+        return bucket_start.isoformat()
+    if granularity == "week":
+        return f"{bucket_start.isocalendar().year}-W{bucket_start.isocalendar().week:02d}"
+    return bucket_start.strftime("%Y-%m")
+
+
+def _trend_bucket_step(bucket_start: date, range_value: str) -> date:
+    granularity = TREND_RANGE_GRANULARITY[range_value]
+    if granularity == "day":
+        return bucket_start + timedelta(days=1)
+    if granularity == "week":
+        return bucket_start + timedelta(days=7)
+    if bucket_start.month == 12:
+        return bucket_start.replace(year=bucket_start.year + 1, month=1, day=1)
+    return bucket_start.replace(month=bucket_start.month + 1, day=1)
 
 
 def get_sales_monthly() -> dict:
@@ -62,6 +105,83 @@ def get_sales_monthly() -> dict:
     except Exception:
         logging.exception("[ANALYTICS][sales/monthly] error")
         return _response("error", reason="query_failed")
+    finally:
+        db.close()
+
+
+def get_sales_trend(range_value: str = "30d") -> dict:
+    db = SessionLocal()
+    try:
+        if range_value not in TREND_RANGE_DAYS:
+            logging.info(f"[ANALYTICS][sales/trend] invalid range: {range_value}")
+            return _response("error", reason="invalid_range")
+
+        rows = (
+            db.query(Product.date.label("date"), Product.revenue.label("revenue"))
+            .filter(Product.date.isnot(None))
+            .filter(Product.revenue.isnot(None))
+            .all()
+        )
+
+        if not rows:
+            logging.info("[ANALYTICS][sales/trend] no_data: no valid rows in database")
+            return {"state": "no_data", "range": range_value, "reason": "no_valid_data_in_range", "data": []}
+
+        dates = [row.date for row in rows if row.date is not None]
+        if not dates:
+            logging.info("[ANALYTICS][sales/trend] no_data: date list is empty after filtering")
+            return {"state": "no_data", "range": range_value, "reason": "no_valid_data_in_range", "data": []}
+
+        latest_date = max(dates)
+        window_days = TREND_RANGE_DAYS[range_value]
+        cutoff_date = latest_date - timedelta(days=window_days - 1)
+        granularity = TREND_RANGE_GRANULARITY[range_value]
+
+        buckets: dict[date, dict[str, float | int]] = defaultdict(lambda: {"revenue": 0.0, "orders": 0})
+        for row in rows:
+            if row.date is None:
+                continue
+            if row.date < cutoff_date or row.date > latest_date:
+                continue
+
+            bucket_start = _trend_bucket_start(row.date, range_value)
+            bucket = buckets[bucket_start]
+            bucket["revenue"] = float(bucket["revenue"] or 0.0) + float(row.revenue or 0.0)
+            bucket["orders"] = int(bucket["orders"] or 0) + 1
+
+        if not buckets:
+            logging.info("[ANALYTICS][sales/trend] no_data: no rows inside selected range")
+            return {"state": "no_data", "range": range_value, "reason": "no_valid_data_in_range", "data": []}
+
+        if granularity == "day":
+            start_bucket = cutoff_date
+        elif granularity == "week":
+            start_bucket = cutoff_date - timedelta(days=cutoff_date.weekday())
+        else:
+            start_bucket = cutoff_date.replace(day=1)
+
+        end_bucket = _trend_bucket_start(latest_date, range_value)
+        data = []
+        current_bucket = start_bucket
+        while current_bucket <= end_bucket:
+            bucket = buckets.get(current_bucket, {"revenue": 0.0, "orders": 0})
+            data.append(
+                {
+                    "period": _trend_period_label(current_bucket, range_value),
+                    "revenue": round(float(bucket["revenue"] or 0.0), 2),
+                    "orders": int(bucket["orders"] or 0),
+                }
+            )
+            current_bucket = _trend_bucket_step(current_bucket, range_value)
+
+        if len(data) <= 1:
+            logging.info("[ANALYTICS][sales/trend] no_data: continuous series collapsed to one point")
+            return {"state": "no_data", "range": range_value, "reason": "no_valid_data_in_range", "data": []}
+
+        return {"state": "valid", "range": range_value, "data": data}
+    except Exception:
+        logging.exception("[ANALYTICS][sales/trend] error")
+        return {"state": "error", "range": range_value, "reason": "query_failed", "data": []}
     finally:
         db.close()
 

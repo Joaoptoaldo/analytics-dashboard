@@ -70,6 +70,14 @@ type SalesPoint = {
   orders: number | null
 }
 
+type SalesTrendRange = '30d' | '90d' | '180d' | '1y'
+
+type SalesTrendPoint = {
+  period: string
+  revenue: number | null
+  orders: number | null
+}
+
 type RawCategoryDistributionPoint = {
   category?: string | null
   count?: number | null
@@ -164,6 +172,13 @@ function useMetricEndpoint<T>(key: string, url: string): MetricResult<T> {
   }
 }
 
+function useSalesTrend(trendRange: SalesTrendRange): MetricResult<SalesTrendPoint> {
+  return useMetricEndpoint<SalesTrendPoint>(
+    `/api/sales/trend?range=${trendRange}`,
+    `${API_BASE}/sales/trend?range=${trendRange}`,
+  )
+}
+
 export function useSales() {
   const salesMonthly = useMetricEndpoint<SalesPoint>('/api/sales/monthly', `${API_BASE}/sales/monthly`)
   const ticketAverage = useMetricEndpoint<TicketAveragePoint>('/api/metrics/ticket-average', `${API_BASE}/metrics/ticket-average`)
@@ -208,7 +223,7 @@ export function useAnalytics() {
   }
 }
 
-export function useDashboard(filters: DashboardFilters, tableParams: TableParams) {
+export function useDashboard(filters: DashboardFilters, tableParams: TableParams, salesTrendRange: SalesTrendRange = '30d') {
   const baseQuery = toQueryString(filters)
   const productsQuery = toQueryString(filters, tableParams)
 
@@ -232,6 +247,7 @@ export function useDashboard(filters: DashboardFilters, tableParams: TableParams
 
   const sales = useSales()
   const analytics = useAnalytics()
+  const salesTrend = useSalesTrend(salesTrendRange)
 
   return {
     overview,
@@ -240,6 +256,9 @@ export function useDashboard(filters: DashboardFilters, tableParams: TableParams
     salesMonthly: sales.salesMonthly,
     salesMonthlyState: sales.salesMonthlyState,
     salesMonthlyReason: sales.salesMonthlyReason,
+    salesTrend: salesTrend.data,
+    salesTrendState: salesTrend.state,
+    salesTrendReason: salesTrend.reason,
     ticketAverage: sales.ticketAverage,
     ticketAverageState: sales.ticketAverageState,
     ticketAverageReason: sales.ticketAverageReason,
@@ -254,7 +273,8 @@ export function useDashboard(filters: DashboardFilters, tableParams: TableParams
       !products ||
       !filterOptions ||
       sales.isLoading ||
+      salesTrend.isLoading ||
       analytics.isLoading,
-    error: overviewError ?? productsError ?? filterOptionsError ?? sales.error ?? analytics.error,
+    error: overviewError ?? productsError ?? filterOptionsError ?? sales.error ?? salesTrend.error ?? analytics.error,
   }
 }

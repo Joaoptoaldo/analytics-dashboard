@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [salesTrendRange, setSalesTrendRange] = useState<'30d' | '90d' | '180d' | '1y'>('30d')
 
 
   const debouncedSearch = useDebounce(search, 400);
@@ -69,9 +70,9 @@ export default function Dashboard() {
   );
   const {
     overview,
-    salesMonthly,
-    salesMonthlyState,
-    salesMonthlyReason,
+    salesTrend,
+    salesTrendState,
+    salesTrendReason,
     categoryDistribution,
     categoryDistributionState,
     categoryDistributionReason,
@@ -82,7 +83,7 @@ export default function Dashboard() {
     filterOptions,
     isLoading,
     error,
-  } = useDashboard(filters, tableParams);
+  } = useDashboard(filters, tableParams, salesTrendRange);
   const { mutate } = useSWRConfig()
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
@@ -148,7 +149,7 @@ export default function Dashboard() {
   const categories = filterOptions?.categories || []
   const statuses = filterOptions?.statuses || []
   const productsItems = products?.items || []
-  const salesMonthlyData = salesMonthly || []
+  const salesTrendData = salesTrend || []
   const categoryDistributionData = categoryDistribution || []
   const topProductsData = topProducts || []
   const hasNoResults = !productsItems.length
@@ -268,32 +269,61 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Vendas Mensais</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardTitle>Vendas Temporais</CardTitle>
+            <div className="flex flex-wrap gap-2 justify-end">
+              {(['30d', '90d', '180d', '1y'] as const).map((range) => (
+                <Button
+                  key={range}
+                  variant={salesTrendRange === range ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSalesTrendRange(range)}
+                >
+                  {range}
+                </Button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent className="h-80">
-            {salesMonthlyState === 'error' ? (
+            {salesTrendState === 'error' ? (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>Não foi possível carregar as vendas mensais</EmptyTitle>
+                  <EmptyTitle>Não foi possível carregar a tendência de vendas</EmptyTitle>
                   <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
                 </EmptyHeader>
               </Empty>
-            ) : salesMonthlyState !== 'valid' || salesMonthlyData.length === 0 ? (
+            ) : salesTrendState !== 'valid' || salesTrendData.length <= 1 ? (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>Sem dados disponíveis</EmptyTitle>
-                  <EmptyDescription>{salesMonthlyReason || 'Não há registros válidos com date para este gráfico.'}</EmptyDescription>
+                  <EmptyTitle>Sem dados suficientes para a tendência</EmptyTitle>
+                  <EmptyDescription>{salesTrendReason || 'É necessário mais de um ponto temporal válido para renderizar a linha.'}</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={salesMonthlyData}>
+                <LineChart data={salesTrendData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
+                  <XAxis dataKey="period" />
                   <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null
+                      const point = payload[0].payload as { revenue?: number | null; orders?: number | null }
+                      const revenue = typeof point.revenue === 'number' ? point.revenue : Number(point.revenue || 0)
+                      const orders = typeof point.orders === 'number' ? point.orders : Number(point.orders || 0)
+
+                      return (
+                        <div className="rounded-md border bg-background px-3 py-2 shadow-sm">
+                          <div className="text-xs text-muted-foreground">Período: {label}</div>
+                          <div className="text-sm font-medium">
+                            Receita: R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Pedidos: {orders}</div>
+                        </div>
+                      )
+                    }}
+                  />
+                  <Line type="linear" dataKey="revenue" stroke="#8884d8" strokeWidth={2} dot={false} connectNulls={false} />
                 </LineChart>
               </ResponsiveContainer>
             )}
