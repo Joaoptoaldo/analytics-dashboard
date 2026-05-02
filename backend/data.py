@@ -1,9 +1,9 @@
 ﻿from datetime import datetime, timedelta
 from typing import Any
 
-CATEGORIES = ["SaaS", "E-commerce", "Fintech", "Education", "Health"]
+CATEGORIES = ["groceries", "home-decoration", "kitchen-accessories", "mens-watches", "beauty"]
 STATUSES = ["Completed", "Processing", "Shipped", "Pending"]
-CLIENTS = [
+CLIENTS = [ 
     "Alfa Tech",
     "Beta Commerce",
     "NovaBank",
@@ -14,6 +14,25 @@ CLIENTS = [
     "CloudOps",
     "SmartLabs",
     "Pulse Group",
+    "EcoSolutions",
+    "NextGen",
+    "Bright Future",
+    "Global Ventures",
+    "UrbanStyle",
+    "HealthFirst",
+    "Apex Innovations",
+    "Zenith Corp",
+    "Vertex Solutions",
+    "Synergy Partners",
+    "Momentum Inc",
+    "Infinity Group",
+    "Pioneer Tech",
+    "Summit Enterprises",
+    "Visionary Labs",
+    "Quantum Solutions",
+    "Nexus Group",
+    "Eclipse Systems",
+    "Radiant Ventures",
 ]
 
 

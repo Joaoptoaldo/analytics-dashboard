@@ -233,7 +233,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import os
 from typing import Any
-from backend.routers.products import router as products_router
 
 
 
@@ -249,11 +248,12 @@ init_db()
 # CORS config
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+allow_credentials = "*" not in cors_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -25,6 +25,6 @@ def init_db():
     # Seed controlado por variável de ambiente
     ENV = os.getenv("ENV", "production")
     if ENV == "development":
-        # O seed NUNCA roda automaticamente em produção!
+       
         from backend.seeds.seed_data import seed_database
         print("[INFO] Ambiente de desenvolvimento detectado. Para popular o banco com seed, execute manualmente: backend/seeds/seed_data.py")

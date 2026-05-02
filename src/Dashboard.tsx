@@ -223,6 +223,7 @@ export default function Dashboard() {
               <Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
                 Limpar filtros
               </Button>
+              
             </div>
           </div>
         </CardHeader>
@@ -246,14 +247,18 @@ export default function Dashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas categorias</SelectItem>
-                {categories.map((item: string) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
+                {categories && categories.length > 0 ? (
+                  categories.map((item: string) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="all" disabled>Nenhuma categoria disponível</SelectItem>
+                )}
               </SelectContent>
             </Select>
-            {/* Região removida: não disponível na API externa */}
+            {/* disponível na API externa */}
             <Select value={status} onValueChange={(value) => onFilterChange(setStatus, value)}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Status" />
