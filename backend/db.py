@@ -18,6 +18,7 @@ Base = declarative_base()
 def init_db():
     try:
         from backend.models.product import Product
+        from backend.models.sync_state import SyncState
     except Exception:
         pass
     Base.metadata.create_all(bind=engine)

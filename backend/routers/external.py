@@ -14,7 +14,7 @@ def get_external_products(
     status: str = Query(default="all"),
     search: str = Query(default=""),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=8, ge=1, le=50),
+    page_size: int = Query(default=8, ge=1, le=1000),
     sort_by: str = Query(default="date"),
     sort_order: str = Query(default="desc"),
 ):

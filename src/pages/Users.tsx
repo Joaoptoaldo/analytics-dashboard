@@ -73,7 +73,7 @@ export default function Users() {
 
   // Filtros para buscar todos os produtos e extrair clientes únicos
   const filters = useMemo(() => ({ period: 'all', category, status: 'all', search: debouncedSearch }), [category, debouncedSearch]);
-  const tableParams = useMemo(() => ({ page: 1, pageSize: 50, sortBy: 'client', sortOrder: 'asc' as 'asc' | 'desc' }), []);
+  const tableParams = useMemo(() => ({ page: 1, pageSize: 1000, sortBy: 'client', sortOrder: 'asc' as 'asc' | 'desc' }), []);
   const { products, filterOptions, isLoading, error } = useDashboard(filters, tableParams);
 
   // Extrair clientes únicos e status mais recente

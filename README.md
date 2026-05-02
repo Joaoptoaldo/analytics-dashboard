@@ -58,23 +58,8 @@ O frontend esta em `src/` e o backend modularizado em `backend/`.
 - pnpm (ou npm/yarn)
 
 ### 2. Variaveis de ambiente
-Crie um arquivo `.env` na raiz com as variaveis:
+Crie um arquivo `.env` na raiz usando o arquivo [.env.example](.env.example) como base.
 
-```env
-VITE_API_BASE_URL=http://localhost:8000/api
-VITE_USE_EXTERNAL=true
-VITE_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-VITE_DATABASE_URL=sqlite:///./backend.db
-VITE_ALLOW_SEED=false
-```
-
-Variaveis obrigatorias para setup do backend:
-- `VITE_DATABASE_URL`
-- `VITE_ALLOW_SEED`
-### 2. Variaveis de ambiente
-Crie um arquivo `.env` na raiz com as variaveis:
-
-### 2. Variaveis de ambiente
 ```env
 # === Frontend (Vite - prefixo VITE_) ===
 VITE_API_BASE_URL=http://localhost:8000/api
@@ -85,11 +70,14 @@ CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 DATABASE_URL=sqlite:///./backend.db
 ENV=development
 ALLOW_SEED=false
+EXTERNAL_SYNC_TOKEN=
+EXTERNAL_SYNC_MIN_INTERVAL_SECONDS=60
 ```
 
 **Variaveis obrigatorias:**
 - Frontend: `VITE_API_BASE_URL`
-- Backend: `DATABASE_URL`, `ENV`, `ALLOW_SEED`
+- Backend: `DATABASE_URL`, `CORS_ORIGINS`, `ENV`, `ALLOW_SEED`
+- Sync externo: `EXTERNAL_SYNC_TOKEN`, `EXTERNAL_SYNC_MIN_INTERVAL_SECONDS`
 
 ### 3. Instalando dependencias
 

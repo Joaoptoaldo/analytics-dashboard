@@ -115,13 +115,13 @@ export default function Analytics() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Receita Média</CardTitle>
+            <CardTitle>Média de Receita por Registro</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
             {ticketAverageState === 'error' ? (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>Não foi possível carregar o ticket médio</EmptyTitle>
+                  <EmptyTitle>Não foi possível carregar a média de receita</EmptyTitle>
                   <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
                 </EmptyHeader>
               </Empty>

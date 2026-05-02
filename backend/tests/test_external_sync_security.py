@@ -2,6 +2,8 @@ import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
+from backend.db import SessionLocal
+from backend.models.sync_state import SyncState
 from backend.routers import external_sync
 
 
@@ -27,9 +29,15 @@ def _build_request(headers: dict[str, str] | None = None, host: str = "127.0.0.1
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limit_state():
-    external_sync._last_sync_request_at.clear()
-    yield
-    external_sync._last_sync_request_at.clear()
+    db = SessionLocal()
+    try:
+        db.query(SyncState).delete()
+        db.commit()
+        yield
+        db.query(SyncState).delete()
+        db.commit()
+    finally:
+        db.close()
 
 
 def test_sync_access_allows_when_token_not_configured(monkeypatch: pytest.MonkeyPatch):

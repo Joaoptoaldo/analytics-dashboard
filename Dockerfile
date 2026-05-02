@@ -17,11 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Atualiza pip
 RUN pip install --upgrade pip
 
-# Copia arquivo de dependências (ajuda cache de build)
-COPY backend/pyproject.toml /app/backend/pyproject.toml
+# Copia o arquivo de dependências do backend para aproveitar cache de build
+COPY backend/requirements.txt /app/backend/requirements.txt
 
-# Instala dependências principais (ajuste conforme seu lockfile)
-RUN pip install fastapi numpy pandas "uvicorn[standard]" requests SQLAlchemy psycopg2-binary
+# Instala as dependências reais do backend
+RUN pip install -r backend/requirements.txt
 
 # Copia o código
 COPY . /app

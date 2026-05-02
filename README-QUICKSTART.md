@@ -19,15 +19,23 @@ Crie um arquivo `.env` na raiz (já existe um exemplo):
 
 ```
 VITE_API_BASE_URL=http://localhost:8000/api
-API_BASE_URL=http://localhost:8000/api
 CORS_ORIGINS=http://localhost:5173
 VITE_USE_EXTERNAL=true
+DATABASE_URL=sqlite:///./backend.db
+ENV=development
+ALLOW_SEED=false
+EXTERNAL_SYNC_TOKEN=
+EXTERNAL_SYNC_MIN_INTERVAL_SECONDS=60
 ```
 
 - `VITE_API_BASE_URL`: URL base da API para o frontend
-- `API_BASE_URL`: URL base da API para o backend
 - `CORS_ORIGINS`: Origem permitida para CORS (ajuste conforme porta do frontend)
 - `VITE_USE_EXTERNAL`: `true` para usar dados reais da FakeStoreAPI
+- `DATABASE_URL`: string de conexão do banco para o backend
+- `ENV`: define o ambiente (`development` ou `production`)
+- `ALLOW_SEED`: controla seed automático no ambiente de desenvolvimento
+- `EXTERNAL_SYNC_TOKEN`: token opcional para proteger o endpoint de sincronização
+- `EXTERNAL_SYNC_MIN_INTERVAL_SECONDS`: intervalo mínimo entre syncs
 
 ## 3. Instalando dependências
 

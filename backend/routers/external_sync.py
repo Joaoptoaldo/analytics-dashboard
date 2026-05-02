@@ -1,12 +1,19 @@
 ﻿import os
 import time
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Request
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
+from backend.db import Base, SessionLocal, engine
+from backend.models.sync_state import SyncState
 from backend.services.external import sync_external_products
 
 router = APIRouter()
-_last_sync_request_at: dict[str, float] = {}
+SYNC_STATE_KEY = "external-products-sync"
+
+Base.metadata.create_all(bind=engine)
 
 
 def _get_client_identifier(request: Request) -> str:
@@ -28,12 +35,37 @@ def _enforce_sync_rate_limit(request: Request) -> None:
     if min_interval_seconds <= 0:
         return
 
-    client_key = _get_client_identifier(request)
-    now = time.monotonic()
-    last_request = _last_sync_request_at.get(client_key)
-    if last_request is not None and now - last_request < min_interval_seconds:
-        raise HTTPException(status_code=429, detail="Sync temporarily rate limited")
-    _last_sync_request_at[client_key] = now
+    _ = _get_client_identifier(request)
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        cutoff = now - timedelta(seconds=min_interval_seconds)
+
+        state = db.get(SyncState, SYNC_STATE_KEY)
+        if state is None:
+            db.add(SyncState(key=SYNC_STATE_KEY, last_sync_at=now))
+            try:
+                db.commit()
+                return
+            except IntegrityError:
+                db.rollback()
+
+        updated_rows = (
+            db.query(SyncState)
+            .filter(
+                SyncState.key == SYNC_STATE_KEY,
+                or_(SyncState.last_sync_at.is_(None), SyncState.last_sync_at <= cutoff),
+            )
+            .update({SyncState.last_sync_at: now}, synchronize_session=False)
+        )
+
+        if updated_rows == 0:
+            db.rollback()
+            raise HTTPException(status_code=429, detail="Sync temporarily rate limited")
+
+        db.commit()
+    finally:
+        db.close()
 
 
 @router.post("/external-products/sync")
