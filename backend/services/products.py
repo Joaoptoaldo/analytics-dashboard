@@ -1,8 +1,6 @@
 ﻿import logging
 from datetime import date, timedelta
-
 from sqlalchemy import asc, desc, or_
-
 from backend.db import SessionLocal
 from backend.models.product import Product
 from backend.schemas.products import ProductItem, ProductsResponse

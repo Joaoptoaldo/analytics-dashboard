@@ -16,7 +16,9 @@ from backend.routers.external import router as external_router
 from backend.routers.external_sync import router as external_sync_router
 from backend.routers.products import router as products_router
 from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+from starlette.requests import Request
 
 
 load_dotenv()
@@ -32,17 +34,60 @@ app.include_router(external_sync_router, prefix="/api")
 init_db()
 
 
+class CustomCORSMiddleware(BaseHTTPMiddleware):
+    """Middleware customizado para CORS que adiciona headers manualmente"""
+    def __init__(self, app, allow_origins=None, allow_credentials=False):
+        super().__init__(app)
+        self.allow_origins = allow_origins or ["*"]
+        self.allow_credentials = allow_credentials
+        logging.info(f"[CORS] CustomCORSMiddleware initializado com allow_origins={self.allow_origins}, allow_credentials={self.allow_credentials}")
+    
+    async def dispatch(self, request: Request, call_next) -> Response:
+        # Handle preflight requests (OPTIONS)
+        if request.method == "OPTIONS":
+            origin = request.headers.get("origin", "*")
+            if "*" in self.allow_origins or origin in self.allow_origins:
+                return Response(
+                    headers={
+                        "Access-Control-Allow-Origin": origin,
+                        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+                        "Access-Control-Allow-Credentials": "true" if self.allow_credentials else "false",
+                        "Access-Control-Max-Age": "3600",
+                    }
+                )
+        
+        # Process request
+        response = await call_next(request)
+        
+        # Add CORS headers to response
+        origin = request.headers.get("origin", "*")
+        if "*" in self.allow_origins or origin in self.allow_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+            if self.allow_credentials:
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+        return response
+
+
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
-allow_credentials = "*" not in cors_origins
+# Quando origins=['*'], credentials DEVE ser False (padrão CORS)
+allow_credentials = False  # Hardcoded for dev
+logging.info(f"[CORS] Loaded CORS_ORIGINS={cors_origins_env}, parsed={cors_origins}, allow_credentials={allow_credentials}")
 
 app.add_middleware(
-    CORSMiddleware,
+    CustomCORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
 )
+
+# Endpoint de teste para diagnosticar CORS
+@app.get("/api/test-cors")
+def test_cors():
+    return {"message": "CORS is working!"}
 
 
 def _get_period_reference_date(db):
@@ -95,6 +140,27 @@ def _apply_db_filters(query, period, category, status, search):
         )
     return query
 
+
+def _calculate_overview_metrics(query):
+    total = query.with_entities(func.count(Product.id)).scalar() or 0
+    total_revenue = query.with_entities(func.sum(Product.revenue)).scalar() or 0.0
+    total_customers = query.with_entities(func.count(distinct(Product.client))).scalar() or 0
+    completed_orders = query.filter(Product.status == "Completed").with_entities(func.count(Product.id)).scalar() or 0
+    conversion_rate = round((completed_orders / total) * 100, 2) if total else 0
+    return {
+        "total": total,
+        "total_revenue": float(total_revenue or 0.0),
+        "total_customers": total_customers,
+        "completed_orders": completed_orders,
+        "conversion_rate": conversion_rate,
+    }
+
+
+def _percentage_change(current: float, previous: float) -> float | None:
+    if previous == 0:
+        return None if current == 0 else 100.0
+    return round(((current - previous) / abs(previous)) * 100, 2)
+
 def _build_overview_db(db, period="all", category="all", status="all", search=""):
     """_summary_: Calcula metricas de overview a partir de dados do banco de dados, onde a resposta inclui o valor total da receita, número total de pedidos, número total de clientes únicos e taxa de conversão, além de metadados como estado da resposta e razão para casos de ausência de dados. O endpoint é útil para fornecer uma visão geral do desempenho do negócio com base nos dados disponíveis, permitindo que os usuários avaliem rapidamente as métricas-chave e identifiquem áreas que podem exigir atenção ou melhoria.
 
@@ -110,14 +176,15 @@ def _build_overview_db(db, period="all", category="all", status="all", search=""
     """
     base_query = db.query(Product)
     filtered_query = _apply_db_filters(base_query, period, category, status, search)
-    
-    total = filtered_query.with_entities(func.count(Product.id)).scalar() or 0
-    total_revenue = filtered_query.with_entities(func.sum(Product.revenue)).scalar() or 0.0
-    total_customers = filtered_query.with_entities(func.count(distinct(Product.client))).scalar() or 0
-    completed_orders = filtered_query.filter(Product.status == "Completed").with_entities(func.count(Product.id)).scalar() or 0
-    conversion_rate = round((completed_orders / total) * 100, 2) if total else 0
+
+    current_metrics = _calculate_overview_metrics(filtered_query)
+    total = current_metrics["total"]
+    total_revenue = current_metrics["total_revenue"]
+    total_customers = current_metrics["total_customers"]
+    completed_orders = current_metrics["completed_orders"]
+    conversion_rate = current_metrics["conversion_rate"]
     logging.info(f"[KPI][OVERVIEW] total: {total}, total_customers: {total_customers}, completed_orders: {completed_orders}")
-    
+
     if total == 0:
         return {
             "total_revenue": None,
@@ -127,15 +194,28 @@ def _build_overview_db(db, period="all", category="all", status="all", search=""
             "state": "no_data",
             "reason": "no_data"
         }
+
+    previous_metrics = None
+    days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
+    if period in days_map:
+        reference_date = _get_period_reference_date(db)
+        current_start = reference_date - timedelta(days=days_map[period] - 1)
+        previous_end = current_start - timedelta(days=1)
+        previous_start = previous_end - timedelta(days=days_map[period] - 1)
+        previous_query = db.query(Product).filter(Product.date != None)
+        previous_query = previous_query.filter(Product.date >= previous_start, Product.date <= previous_end)
+        previous_query = _apply_db_filters(previous_query, "all", category, status, search)
+        previous_metrics = _calculate_overview_metrics(previous_query)
+
     return {
         "total_revenue": round(total_revenue, 2),
         "total_orders": total,
         "total_customers": total_customers,
         "conversion_rate": conversion_rate,
-        "revenue_change": 0.0,
-        "orders_change": 0.0,
-        "customers_change": 0.0,
-        "conversion_change": 0.0,
+        "revenue_change": _percentage_change(total_revenue, previous_metrics["total_revenue"]) if previous_metrics else None,
+        "orders_change": _percentage_change(total, previous_metrics["total"]) if previous_metrics else None,
+        "customers_change": _percentage_change(total_customers, previous_metrics["total_customers"]) if previous_metrics else None,
+        "conversion_change": _percentage_change(conversion_rate, previous_metrics["conversion_rate"]) if previous_metrics else None,
         "state": "valid"
     }
 def _build_sales_db(db, period="all", category="all", status="all", search=""):

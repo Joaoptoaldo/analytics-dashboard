@@ -168,6 +168,17 @@ export default function Dashboard() {
   const hasNoResults = !productsItems.length
   const hasActiveFilters =
     period !== 'all' || category !== 'all' || status !== 'all' || debouncedSearch.trim() !== ''
+  const salesTrendXAxisInterval = salesTrendRange === '1y' ? 29 : salesTrendRange === '180d' ? 13 : 2
+  const salesTrendRangeLabel =
+    period === 'all'
+      ? '30 dias (fallback quando o filtro está em Tudo)'
+      : salesTrendRange === '1y'
+        ? '1 ano'
+        : salesTrendRange === '180d'
+          ? '180 dias'
+          : salesTrendRange === '90d'
+            ? '90 dias'
+            : '30 dias'
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6']
   const RADIAN = Math.PI / 180
 
@@ -206,6 +217,12 @@ export default function Dashboard() {
     )
   }
 
+  const formatPercentChange = (value?: number | null) => {
+    if (value === null || value === undefined || Number.isNaN(value)) return 'sem comparação'
+    const sign = value > 0 ? '+' : ''
+    return `${sign}${value.toFixed(2)}% vs período anterior`
+  }
+
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-3xl font-bold">Dashboard Analytics</h1>
@@ -223,7 +240,7 @@ export default function Dashboard() {
               <Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
                 Limpar filtros
               </Button>
-              
+
             </div>
           </div>
         </CardHeader>
@@ -292,7 +309,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">${overview?.total_revenue?.toLocaleString()}</div>
-            <p className="text-sm text-muted-foreground">{overview?.revenue_change}% este mês</p>
+            <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.revenue_change)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -301,6 +318,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{overview?.total_orders?.toLocaleString()}</div>
+            <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.orders_change)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -309,6 +327,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{overview?.total_customers?.toLocaleString()}</div>
+            <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.customers_change)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -317,6 +336,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{overview?.conversion_rate}%</div>
+            <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.conversion_change)}</p>
           </CardContent>
         </Card>
       </div>
@@ -324,7 +344,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between gap-3">
-            <CardTitle>Vendas Temporais</CardTitle>
+            <div>
+              <CardTitle>Vendas Temporais - série diária</CardTitle>
+              <p className="text-sm text-muted-foreground">Janela ativa: {salesTrendRangeLabel}</p>
+            </div>
           </CardHeader>
           <CardContent className="h-80">
             {salesTrendState === 'error' ? (
@@ -345,7 +368,7 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={salesTrendData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="period" />
+                  <XAxis dataKey="period" interval={salesTrendXAxisInterval} minTickGap={18} />
                   <YAxis />
                   <Tooltip
                     content={({ active, payload, label }) => {

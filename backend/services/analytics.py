@@ -17,8 +17,8 @@ TREND_RANGE_DAYS = {
 TREND_RANGE_GRANULARITY = {
     "30d": "day",
     "90d": "day",
-    "180d": "week",
-    "1y": "month",
+    "180d": "day",
+    "1y": "day",
 }
 
 
@@ -67,9 +67,7 @@ def _trend_bucket_start(day: date, range_value: str) -> date:
     granularity = TREND_RANGE_GRANULARITY[range_value]
     if granularity == "day":
         return day
-    if granularity == "week":
-        return day - timedelta(days=day.weekday())
-    return day.replace(day=1)
+    return day
 
 
 def _trend_period_label(bucket_start: date, range_value: str) -> str:
@@ -85,9 +83,7 @@ def _trend_period_label(bucket_start: date, range_value: str) -> str:
     granularity = TREND_RANGE_GRANULARITY[range_value]
     if granularity == "day":
         return bucket_start.isoformat()
-    if granularity == "week":
-        return f"{bucket_start.isocalendar().year}-W{bucket_start.isocalendar().week:02d}"
-    return bucket_start.strftime("%Y-%m")
+    return bucket_start.isoformat()
 
 
 def _trend_bucket_step(bucket_start: date, range_value: str) -> date:
@@ -103,11 +99,7 @@ def _trend_bucket_step(bucket_start: date, range_value: str) -> date:
     granularity = TREND_RANGE_GRANULARITY[range_value]
     if granularity == "day":
         return bucket_start + timedelta(days=1)
-    if granularity == "week":
-        return bucket_start + timedelta(days=7)
-    if bucket_start.month == 12:
-        return bucket_start.replace(year=bucket_start.year + 1, month=1, day=1)
-    return bucket_start.replace(month=bucket_start.month + 1, day=1)
+    return bucket_start + timedelta(days=1)
 
 
 def get_sales_monthly() -> dict:
@@ -193,8 +185,6 @@ def get_sales_trend(range_value: str = "30d") -> dict:
         latest_date = max(dates)
         window_days = TREND_RANGE_DAYS[range_value]
         cutoff_date = latest_date - timedelta(days=window_days - 1)
-        granularity = TREND_RANGE_GRANULARITY[range_value]
-
         buckets: dict[date, dict[str, float | int]] = defaultdict(lambda: {"revenue": 0.0, "orders": 0})
         for row in rows:
             if row.date is None:
@@ -211,14 +201,8 @@ def get_sales_trend(range_value: str = "30d") -> dict:
             logging.info("[ANALYTICS][sales/trend] no_data: no rows inside selected range")
             return {"state": "no_data", "range": range_value, "reason": "no_valid_data_in_range", "data": []}
 
-        if granularity == "day":
-            start_bucket = cutoff_date
-        elif granularity == "week":
-            start_bucket = cutoff_date - timedelta(days=cutoff_date.weekday())
-        else:
-            start_bucket = cutoff_date.replace(day=1)
-
-        end_bucket = _trend_bucket_start(latest_date, range_value)
+        start_bucket = cutoff_date
+        end_bucket = latest_date
         data = []
         current_bucket = start_bucket
         while current_bucket <= end_bucket:

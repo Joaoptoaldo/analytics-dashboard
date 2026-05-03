@@ -1,5 +1,7 @@
 ﻿from datetime import datetime
 from typing import Any, Dict, List
+import os
+import zlib
 
 import requests
 
@@ -9,12 +11,63 @@ from backend.models.product import Product
 DUMMYJSON_URL = "https://dummyjson.com/products?limit=100"
 
 
-def fetch_external_products() -> List[Dict[str, Any]]:
-    """_summary_: Busca produtos na API externa e normaliza os campos para o formato interno.
+def _parse_iso_date(date_str: str):
+    if not date_str:
+        return None
+    try:
+        normalized = date_str.replace("Z", "+00:00")
+        return datetime.fromisoformat(normalized).date()
+    except Exception:
+        try:
+            return datetime.strptime(date_str[:10], "%Y-%m-%d").date()
+        except Exception:
+            return None
 
-    Returns:
-        List[Dict[str, Any]]: _description_: Lista de dicionários com `id`, `client`, `category`, `revenue`, `status` e `date` (formato `YYYY-MM-DD` ou `None`).
+
+def fetch_external_products() -> List[Dict[str, Any]]:
+    """Busca dados de mercado via Marketstack quando a chave estiver configurada.
+
+    Se `MARKETSTACK_API_KEY` estiver ausente, mantém o comportamento anterior (DummyJSON).
+    Retorna lista de dicionários com `id` (int), `client` (str), `category` (str),
+    `revenue` (float), `status` (str) e `date` (YYYY-MM-DD | None).
     """
+    api_key = os.getenv("MARKETSTACK_API_KEY", "").strip()
+    if api_key:
+        base = os.getenv("MARKETSTACK_BASE_URL", "http://api.marketstack.com/v1/eod")
+        symbols = [s.strip().upper() for s in os.getenv("MARKETSTACK_SYMBOLS", "AAPL,MSFT,GOOGL").split(",") if s.strip()]
+        today = datetime.now().date().strftime("%Y-%m-%d")  # Use data de hoje para Marketstack
+        rows: List[Dict[str, Any]] = []
+        for sym in symbols:
+            try:
+                resp = requests.get(base, params={"access_key": api_key, "symbols": sym}, timeout=10)
+                resp.raise_for_status()
+                data = resp.json()
+                items = data.get("data") or data.get("results") or []
+                if items:
+                    item = items[0]
+                    price = float(item.get("close") or item.get("adj_close") or 0.0)
+                    date_str = today
+                else:
+                    price = 0.0
+                    date_str = today
+            except Exception as exc:
+                print(f"[EXTERNAL][WARN] Erro ao consultar Marketstack para {sym}: {exc}")
+                price = 0.0
+
+            ext_id = zlib.adler32(sym.encode("utf-8"))
+            rows.append(
+                {
+                    "id": int(ext_id),
+                    "client": sym,
+                    "category": "Market",
+                    "revenue": price,
+                    "status": "Completed",
+                    "date": date_str,
+                }
+            )
+        return rows
+
+    # Fallback: DummyJSON (comportamento legado)
     resp = requests.get(DUMMYJSON_URL, timeout=10)
     resp.raise_for_status()
     data = resp.json()
@@ -39,19 +92,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
         if not date_str:
             date_str = item.get("date") or item.get("createdAt") or item.get("creation_date")
 
-        date_val = None
-        if date_str:
-            try:
-                # Aceitar formatos ISO 8601 completos (ex: 2025-04-30T09:41:02.053Z)
-                # Replace 'Z' com '+00:00' para compatibilidade com fromisoformat
-                normalized = date_str.replace("Z", "+00:00")
-                date_val = datetime.fromisoformat(normalized).date()
-            except Exception:
-                # Fallback para string YYYY-MM-DD
-                try:
-                    date_val = datetime.strptime(date_str[:10], "%Y-%m-%d").date()
-                except Exception:
-                    date_val = None
+        date_val = _parse_iso_date(date_str)
 
         if not date_val:
             # Log estruturado para rastreabilidade

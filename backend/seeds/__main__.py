@@ -6,7 +6,7 @@ from backend.seeds.seed_data import seed_database
 
 
 def main():
-    """_summary_: Executa o seed manual com protecoes para evitar uso indevido.
+    """_summary_: Executa o seed manual com protecoes para evitar uso indevido
     """
     ENV = os.getenv("ENV", "production")
     ALLOW_SEED = os.getenv("ALLOW_SEED", "false").lower() == "true"
