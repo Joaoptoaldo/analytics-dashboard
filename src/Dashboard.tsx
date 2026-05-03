@@ -130,25 +130,45 @@ export default function Dashboard() {
     setSortOrder('desc')
   }
 
-  if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>
-  if (error) {
-    return (
-      <ErrorMessage
-        message={error.message || 'Erro ao carregar dashboard.'}
-        onRetry={() => window.location.reload()}
-      />
-    )
-  }
-
-  const periodOptions = filterOptions?.periods || []
-  const categories = filterOptions?.categories || []
-  const statuses = filterOptions?.statuses || []
-  const productsItems = products?.items || []
+  // preparar dados do gráfico antes de quaisquer retornos condicionais
   const salesTrendData = salesTrend || []
-  const categoryDistributionData = categoryDistribution || []
-  const topProductsData = topProducts || []
-  const hasActiveFilters =
-    period !== 'all' || category !== 'all' || status !== 'all' || debouncedSearch.trim() !== ''
+  const aggregatedSalesTrend = useMemo(() => {
+    if (!salesTrendData || salesTrendData.length === 0) return salesTrendData
+    if (salesTrendRange !== '90d') return salesTrendData
+
+    // agrupa por semanas (segunda-feira como início)
+    const map = new Map<string, { period: string; revenue: number; orders: number }>()
+    for (const p of salesTrendData) {
+      const date = new Date(p.period)
+      if (isNaN(date.getTime())) continue
+      const day = date.getDay()
+      const diffToMonday = (day + 6) % 7 // transforma domingo(0) para 6, segunda(1) para 0
+      const monday = new Date(date)
+      monday.setDate(date.getDate() - diffToMonday)
+      monday.setHours(0, 0, 0, 0)
+      const key = monday.toISOString().slice(0, 10)
+      const existing = map.get(key)
+      const revenue = Number(p.revenue || 0)
+      const orders = Number(p.orders || 0)
+      if (existing) {
+        existing.revenue += revenue
+        existing.orders += orders
+      } else {
+        map.set(key, { period: key, revenue, orders })
+      }
+    }
+
+    const arr = Array.from(map.values()).sort((a, b) => (a.period < b.period ? -1 : 1))
+    // formata period para dd/mm/YYYY para exibição
+    return arr.map((r) => ({
+      ...r, period: (() => {
+        const d = new Date(r.period)
+        const day = String(d.getDate()).padStart(2, '0')
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        return `${day}/${month}/${d.getFullYear()}`
+      })()
+    }))
+  }, [salesTrendData, salesTrendRange])
   const salesTrendXAxisInterval = useMemo(() => {
     if (salesTrendRange === '1y') return 29
     if (salesTrendRange === '180d') return 13
@@ -167,6 +187,25 @@ export default function Dashboard() {
       return value
     }
   }
+
+  if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>
+  if (error) {
+    return (
+      <ErrorMessage
+        message={error.message || 'Erro ao carregar dashboard.'}
+        onRetry={() => window.location.reload()}
+      />
+    )
+  }
+
+  const periodOptions = filterOptions?.periods || []
+  const categories = filterOptions?.categories || []
+  const statuses = filterOptions?.statuses || []
+  const productsItems = products?.items || []
+  const categoryDistributionData = categoryDistribution || []
+  const topProductsData = topProducts || []
+  const hasActiveFilters =
+    period !== 'all' || category !== 'all' || status !== 'all' || debouncedSearch.trim() !== ''
 
   const salesTrendRangeLabel =
     period === 'all'
@@ -367,7 +406,7 @@ export default function Dashboard() {
                 </Empty>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={salesTrendData}>
+                  <LineChart data={salesTrendRange === '90d' ? aggregatedSalesTrend : salesTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     {/** componente de tick rotacionado para evitar sobreposição */}
                     {(() => {
