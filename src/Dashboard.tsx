@@ -7,7 +7,7 @@ import {
   Empty,
   EmptyDescription,
   EmptyHeader,
-  EmptyTitle
+  EmptyTitle,
 } from '../components/ui/empty'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { Input } from '../components/ui/input'
@@ -22,15 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select'
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table'
 
 import {
   Bar,
@@ -57,8 +48,7 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-
-  const debouncedSearch = useDebounce(searchInput, 400);
+  const debouncedSearch = useDebounce(searchInput, 400)
   const salesTrendRange = useMemo<'30d' | '90d' | '180d' | '1y'>(() => {
     if (period === '365d') return '1y'
     if (period === 'all') return '30d'
@@ -68,11 +58,12 @@ export default function Dashboard() {
   const filters = useMemo(
     () => ({ period, category, status, search: debouncedSearch }),
     [period, category, status, debouncedSearch],
-  );
+  )
   const tableParams = useMemo(
     () => ({ page, pageSize: 8, sortBy, sortOrder }),
     [page, sortBy, sortOrder],
-  );
+  )
+
   const {
     overview,
     salesTrend,
@@ -88,7 +79,7 @@ export default function Dashboard() {
     filterOptions,
     isLoading,
     error,
-  } = useDashboard(filters, tableParams, salesTrendRange);
+  } = useDashboard(filters, tableParams, salesTrendRange)
   const { mutate } = useSWRConfig()
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
@@ -104,7 +95,7 @@ export default function Dashboard() {
       const resp = await fetch(`${API_BASE}/external-products/sync`, { method: 'POST' })
       if (!resp.ok) throw new Error('Erro ao sincronizar')
       setSyncSuccess(true)
-      // Revalidar todas as queries para garantir que os dados mais recentes sejam exibidos após a sincronização
+
       const overviewQuery = `period=${filters.period}&category=${filters.category}&status=${filters.status}&search=${filters.search}`
       const productsQuery = `period=${filters.period}&category=${filters.category}&status=${filters.status}&search=${filters.search}&page=${tableParams.page}&page_size=${tableParams.pageSize}&sort_by=${tableParams.sortBy}&sort_order=${tableParams.sortOrder}`
       await mutate(`/api/external-products?${productsQuery}`)
@@ -116,8 +107,8 @@ export default function Dashboard() {
       await mutate('/api/metrics/ticket-average')
       await mutate('/api/distribution/category')
       await mutate('/api/top/products')
-    } catch (error: unknown) {
-      setSyncError(error instanceof Error ? error.message : 'Erro desconhecido')
+    } catch (syncException: unknown) {
+      setSyncError(syncException instanceof Error ? syncException.message : 'Erro desconhecido')
     } finally {
       setSyncLoading(false)
       setTimeout(() => setSyncSuccess(false), 2000)
@@ -127,15 +118,6 @@ export default function Dashboard() {
   const onFilterChange = (setter: (value: string) => void, value: string) => {
     setter(value)
     setPage(1)
-  }
-
-  const onSortChange = (field: string) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-      return
-    }
-    setSortBy(field)
-    setSortOrder('desc')
   }
 
   const resetFilters = () => {
@@ -148,15 +130,15 @@ export default function Dashboard() {
     setSortOrder('desc')
   }
 
-  const getSortIndicator = (field: string) => {
-    if (sortBy !== field) return ''
-    return sortOrder === 'asc' ? ' ↑' : ' ↓'
-  }
-
   if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>
-  if (error) return (
-    <ErrorMessage message={error.message || 'Erro ao carregar dashboard.'} onRetry={() => window.location.reload()} />
-  )
+  if (error) {
+    return (
+      <ErrorMessage
+        message={error.message || 'Erro ao carregar dashboard.'}
+        onRetry={() => window.location.reload()}
+      />
+    )
+  }
 
   const periodOptions = filterOptions?.periods || []
   const categories = filterOptions?.categories || []
@@ -165,10 +147,27 @@ export default function Dashboard() {
   const salesTrendData = salesTrend || []
   const categoryDistributionData = categoryDistribution || []
   const topProductsData = topProducts || []
-  const hasNoResults = !productsItems.length
   const hasActiveFilters =
     period !== 'all' || category !== 'all' || status !== 'all' || debouncedSearch.trim() !== ''
-  const salesTrendXAxisInterval = salesTrendRange === '1y' ? 29 : salesTrendRange === '180d' ? 13 : 2
+  const salesTrendXAxisInterval = useMemo(() => {
+    if (salesTrendRange === '1y') return 29
+    if (salesTrendRange === '180d') return 13
+    if (salesTrendRange === '90d') return 6
+    return 2
+  }, [salesTrendRange])
+
+  const formatTick = (value: string, range: string) => {
+    try {
+      const d = new Date(value)
+      if (isNaN(d.getTime())) return value
+      const day = String(d.getDate()).padStart(2, '0')
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      return `${day}/${month}/${d.getFullYear()}`
+    } catch {
+      return value
+    }
+  }
+
   const salesTrendRangeLabel =
     period === 'all'
       ? '30 dias (fallback quando o filtro está em Tudo)'
@@ -181,6 +180,12 @@ export default function Dashboard() {
             : '30 dias'
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6']
   const RADIAN = Math.PI / 180
+
+  const formatPercentChange = (value?: number | null) => {
+    if (value === null || value === undefined || Number.isNaN(value)) return 'sem comparação'
+    const sign = value > 0 ? '+' : ''
+    return `${sign}${value.toFixed(2)}% vs período anterior`
+  }
 
   const renderCategoryPieLabel = ({
     cx = 0,
@@ -217,332 +222,339 @@ export default function Dashboard() {
     )
   }
 
-  const formatPercentChange = (value?: number | null) => {
-    if (value === null || value === undefined || Number.isNaN(value)) return 'sem comparação'
-    const sign = value > 0 ? '+' : ''
-    return `${sign}${value.toFixed(2)}% vs período anterior`
-  }
-
   return (
-    <div className="p-8 space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard Analytics</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-6 text-slate-950 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Dashboard Analytics</h1>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle>Filtros</CardTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onSyncExternal} disabled={syncLoading}>
-                {syncLoading && <Spinner />}
-                {syncLoading ? 'Sincronizando...' : syncSuccess ? 'Sincronizado!' : 'Sincronizar API externa'}
-              </Button>
-              {syncError && <span className="text-xs text-destructive">{syncError}</span>}
-              <Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
-                Limpar filtros
-              </Button>
-
+        <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+          <CardHeader>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <CardTitle>Filtros</CardTitle>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <Button variant="outline" onClick={onSyncExternal} disabled={syncLoading}>
+                  {syncLoading && <Spinner />}
+                  {syncLoading ? 'Sincronizando...' : syncSuccess ? 'Sincronizado!' : 'Sincronizar API externa'}
+                </Button>
+                {syncError && <span className="text-xs text-destructive">{syncError}</span>}
+                <Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
+                  Limpar filtros
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <Select value={period} onValueChange={(value) => onFilterChange(setPeriod, value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                {periodOptions.map((item: { value: string; label: string }) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={category} onValueChange={(value) => onFilterChange(setCategory, value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas categorias</SelectItem>
-                {categories && categories.length > 0 ? (
-                  categories.map((item: string) => (
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <Select value={period} onValueChange={(value) => onFilterChange(setPeriod, value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periodOptions.map((item: { value: string; label: string }) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={category} onValueChange={(value) => onFilterChange(setCategory, value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas categorias</SelectItem>
+                  {categories.length > 0 ? (
+                    categories.map((item: string) => (
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="all" disabled>
+                      Nenhuma categoria disponível
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <Select value={status} onValueChange={(value) => onFilterChange(setStatus, value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos status</SelectItem>
+                  {statuses.map((item: string) => (
                     <SelectItem key={item} value={item}>
                       {item}
                     </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="all" disabled>Nenhuma categoria disponível</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            {/* disponível na API externa */}
-            <Select value={status} onValueChange={(value) => onFilterChange(setStatus, value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos status</SelectItem>
-                {statuses.map((item: string) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              placeholder="Buscar cliente/categoria"
-              value={searchInput}
-              onChange={(event) => {
-                setSearchInput(event.target.value)
-                setPage(1)
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Receita Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">${overview?.total_revenue?.toLocaleString()}</div>
-            <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.revenue_change)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Pedidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{overview?.total_orders?.toLocaleString()}</div>
-            <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.orders_change)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Clientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{overview?.total_customers?.toLocaleString()}</div>
-            <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.customers_change)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Conversão</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{overview?.conversion_rate}%</div>
-            <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.conversion_change)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-3">
-            <div>
-              <CardTitle>Vendas Temporais - série diária</CardTitle>
-              <p className="text-sm text-muted-foreground">Janela ativa: {salesTrendRangeLabel}</p>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Buscar cliente/categoria"
+                value={searchInput}
+                onChange={(event) => {
+                  setSearchInput(event.target.value)
+                  setPage(1)
+                }}
+              />
             </div>
-          </CardHeader>
-          <CardContent className="h-80">
-            {salesTrendState === 'error' ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Não foi possível carregar a tendência de vendas</EmptyTitle>
-                  <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : salesTrendState !== 'valid' || salesTrendData.length <= 1 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Sem dados suficientes para a tendência</EmptyTitle>
-                  <EmptyDescription>{salesTrendReason || 'É necessário mais de um ponto temporal válido para renderizar a linha.'}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={salesTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="period" interval={salesTrendXAxisInterval} minTickGap={18} />
-                  <YAxis />
-                  <Tooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null
-                      const point = payload[0].payload as { revenue?: number | null; orders?: number | null }
-                      const revenue = typeof point.revenue === 'number' ? point.revenue : Number(point.revenue || 0)
-                      const orders = typeof point.orders === 'number' ? point.orders : Number(point.orders || 0)
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <CardHeader>
+              <CardTitle>Receita Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">${overview?.total_revenue?.toLocaleString()}</div>
+              <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.revenue_change)}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <CardHeader>
+              <CardTitle>Total Pedidos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{overview?.total_orders?.toLocaleString()}</div>
+              <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.orders_change)}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <CardHeader>
+              <CardTitle>Clientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{overview?.total_customers?.toLocaleString()}</div>
+              <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.customers_change)}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <CardHeader>
+              <CardTitle>Conversão</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{overview?.conversion_rate}%</div>
+              <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.conversion_change)}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div>
+                <CardTitle>Vendas Temporais - série diária</CardTitle>
+                <p className="text-sm text-muted-foreground">Janela ativa: {salesTrendRangeLabel}</p>
+              </div>
+            </CardHeader>
+            <CardContent className="h-80">
+              {salesTrendState === 'error' ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>Não foi possível carregar a tendência de vendas</EmptyTitle>
+                    <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : salesTrendState !== 'valid' || salesTrendData.length <= 1 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>Sem dados suficientes para a tendência</EmptyTitle>
+                    <EmptyDescription>
+                      {salesTrendReason || 'É necessário mais de um ponto temporal válido para renderizar a linha.'}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={salesTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    {/** componente de tick rotacionado para evitar sobreposição */}
+                    {(() => {
+                      const RotatedTick = (props: any) => {
+                        const { x, y, payload } = props
+                        const label = formatTick(String(payload?.value ?? ''), salesTrendRange)
+                        const ty = y + 12
+                        return (
+                          <text x={x} y={ty} transform={`rotate(-20 ${x} ${ty})`} textAnchor="end" fontSize={11}>
+                            {label}
+                          </text>
+                        )
+                      }
 
                       return (
-                        <div className="rounded-md border bg-background px-3 py-2 shadow-sm">
-                          <div className="text-xs text-muted-foreground">Período: {label}</div>
-                          <div className="text-sm font-medium">
-                            Receita: R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
-                          <div className="text-xs text-muted-foreground">Pedidos: {orders}</div>
-                        </div>
+                        <XAxis dataKey="period" interval={salesTrendXAxisInterval} minTickGap={18} tick={<RotatedTick />} />
                       )
-                    }}
-                  />
-                  <Line type="linear" dataKey="revenue" stroke="#8884d8" strokeWidth={2} dot={false} connectNulls={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribuição por Categoria</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
-            {categoryDistributionState === 'error' ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Não foi possível carregar a distribuição</EmptyTitle>
-                  <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : categoryDistributionState !== 'valid' || categoryDistributionData.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Sem dados disponíveis</EmptyTitle>
-                  <EmptyDescription>{categoryDistributionReason || 'Não há categorias válidas para este gráfico.'}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <ResponsiveContainer width="100%" height="50%">
-                <PieChart>
-                  <Pie
-                    data={categoryDistributionData}
-                    dataKey="orders"
-                    nameKey="category"
-                    outerRadius={80}
-                    label={renderCategoryPieLabel}
-                    labelLine={false}
-                  >
-                    {categoryDistributionData.map((_: unknown, index: number) => (
-                      <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-            <div style={{ height: 50 }} />
-            {topProductsState === 'error' ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Não foi possível carregar os top products</EmptyTitle>
-                  <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : topProductsState !== 'valid' || topProductsData.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Sem dados disponíveis</EmptyTitle>
-                  <EmptyDescription>{topProductsReason || 'Não há produtos válidos para este gráfico.'}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <ResponsiveContainer width="100%" height="45%">
-                <BarChart data={topProductsData} margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="product" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="revenue" fill="#4f46e5" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                    })()}
+                    <YAxis />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null
+                        const point = payload[0].payload as { revenue?: number | null; orders?: number | null }
+                        const revenue = typeof point.revenue === 'number' ? point.revenue : Number(point.revenue || 0)
+                        const orders = typeof point.orders === 'number' ? point.orders : Number(point.orders || 0)
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Tabela de Pedidos</CardTitle>
-          <div className="text-sm text-muted-foreground">
-            {products?.total || 0} resultados
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <button className="font-medium" onClick={() => onSortChange('id')}>
-                    ID{getSortIndicator('id')}
-                  </button>
-                </TableHead>
-                <TableHead>
-                  <button className="font-medium" onClick={() => onSortChange('client')}>
-                    Cliente{getSortIndicator('client')}
-                  </button>
-                </TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>
-                  <button className="font-medium" onClick={() => onSortChange('revenue')}>
-                    Receita{getSortIndicator('revenue')}
-                  </button>
-                </TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {hasNoResults && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                    Nenhum resultado com os filtros atuais. Ajuste os filtros ou limpe para ver todos os dados.
-                  </TableCell>
-                </TableRow>
+                        return (
+                          <div className="rounded-md border bg-background px-3 py-2 shadow-sm">
+                            <div className="text-xs text-muted-foreground">Período: {label}</div>
+                            <div className="text-sm font-medium">
+                              Receita: R$ {revenue.toLocaleString('pt-BR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Pedidos: {orders}</div>
+                          </div>
+                        )
+                      }}
+                    />
+                    <Line type="linear" dataKey="revenue" stroke="#8884d8" strokeWidth={2.5} dot={false} connectNulls={false} />
+                  </LineChart>
+                </ResponsiveContainer>
               )}
-              {productsItems.map((item: ProductItem) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.id}</TableCell>
-                  <TableCell>{item.client}</TableCell>
-                  <TableCell>{item.category}</TableCell>
-                  <TableCell>R$ {item.revenue.toLocaleString()}</TableCell>
-                  <TableCell>
-                    <Badge variant={item.status === 'Completed' ? 'default' : 'secondary'}>
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{item.date}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+            </CardContent>
+          </Card>
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
-              Página {products?.page || 1} de {products?.total_pages || 1}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                disabled={(products?.page || 1) <= 1}
-              >
-                Anterior
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setPage((prev) => Math.min(prev + 1, products?.total_pages || 1))}
-                disabled={(products?.page || 1) >= (products?.total_pages || 1)}
-              >
-                Próxima
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <CardHeader>
+              <CardTitle>Distribuição por Categoria</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+              <div className="h-80">
+                {categoryDistributionState === 'error' ? (
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyTitle>Não foi possível carregar a distribuição</EmptyTitle>
+                      <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : categoryDistributionState !== 'valid' || categoryDistributionData.length === 0 ? (
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyTitle>Sem dados disponíveis</EmptyTitle>
+                      <EmptyDescription>
+                        {categoryDistributionReason || 'Não há categorias válidas para este gráfico.'}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryDistributionData}
+                        dataKey="orders"
+                        nameKey="category"
+                        outerRadius={112}
+                        label={renderCategoryPieLabel}
+                        labelLine={false}
+                      >
+                        {categoryDistributionData.map((_: unknown, index: number) => (
+                          <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              <div className="flex h-80 flex-col gap-4">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-sm font-medium">Top products</div>
+                  <div className="text-xs text-muted-foreground">Receitas mais altas no recorte atual</div>
+                </div>
+                <div className="flex-1">
+                  {topProductsState === 'error' ? (
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyTitle>Não foi possível carregar os top products</EmptyTitle>
+                        <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  ) : topProductsState !== 'valid' || topProductsData.length === 0 ? (
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyTitle>Sem dados disponíveis</EmptyTitle>
+                        <EmptyDescription>{topProductsReason || 'Não há produtos válidos para este gráfico.'}</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topProductsData} margin={{ left: 10, right: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="product" tick={{ fontSize: 11 }} interval={0} height={58} angle={-20} textAnchor="end" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="revenue" fill="#4f46e5" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Tabela de Pedidos</CardTitle>
+              <div className="text-sm text-muted-foreground">{products?.total || 0} resultados</div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-3 font-medium">ID</th>
+                      <th className="px-3 py-3 font-medium">Cliente</th>
+                      <th className="px-3 py-3 font-medium">Categoria</th>
+                      <th className="px-3 py-3 font-medium">Receita</th>
+                      <th className="px-3 py-3 font-medium">Status</th>
+                      <th className="px-3 py-3 font-medium">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productsItems.map((item: ProductItem) => (
+                      <tr key={item.id} className="border-b last:border-b-0">
+                        <td className="px-3 py-3">{item.id}</td>
+                        <td className="px-3 py-3">{item.client}</td>
+                        <td className="px-3 py-3">{item.category}</td>
+                        <td className="px-3 py-3">R$ {item.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="px-3 py-3">
+                          <Badge variant={item.status === 'Completed' ? 'default' : 'secondary'}>{item.status}</Badge>
+                        </td>
+                        <td className="px-3 py-3">{item.date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {products && products.total_pages > 1 && (
+                <div className="mt-4 flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={(products?.page || 1) <= 1}
+                  >
+                    Anterior
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Página {products?.page || 1} de {products?.total_pages || 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    onClick={() => setPage((prev) => Math.min(prev + 1, products?.total_pages || 1))}
+                    disabled={(products?.page || 1) >= (products?.total_pages || 1)}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }
-
