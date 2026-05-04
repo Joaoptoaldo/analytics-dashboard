@@ -119,6 +119,9 @@ def _apply_db_filters(query, period, category, status, search):
     Returns:
         _type_: _description_: Consulta do SQLAlchemy filtrada com base nos critérios especificados.
     """
+    # Always exclude synthetic (test) data by default
+    query = query.filter(Product.is_synthetic == False)
+    
     if period != "all":
         days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
         days = days_map.get(period, 365)
@@ -247,9 +250,8 @@ def _build_sales_db(db, period="all", category="all", status="all", search=""):
         func.sum(Product.revenue).label('revenue'),
         func.count(Product.id).label('orders'),
         func.count(distinct(Product.client)).label('customers')
-    ).filter(Product.date != None)
+    ).group_by('month').order_by('month').all()
 
-    results = results.group_by('month').order_by('month').all()
     logging.info(f"[KPI][SALES] total válidos: {total}, meses: {len(results)}")
     
     return [

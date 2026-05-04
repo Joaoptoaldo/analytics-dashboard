@@ -111,7 +111,8 @@ def get_sales_monthly(period: str = "all", category: str = "all", status: str = 
     db = SessionLocal()
     try:
         # build base query and apply filters (period, category, status, search)
-        base_query = db.query(Product).filter(Product.date.isnot(None))
+        # Always exclude synthetic (test) data by default
+        base_query = db.query(Product).filter(Product.date.isnot(None), Product.is_synthetic == False)
         if period != "all":
             days_map = {"30d": 30, "90d": 90, "180d": 180, "1y": 365, "365d": 365}
             days = days_map.get(period, 365)
@@ -266,7 +267,7 @@ def get_distribution_category() -> dict:
     """
     db = SessionLocal()
     try:
-        valid_count = db.query(func.count(Product.id)).scalar() or 0
+        valid_count = db.query(func.count(Product.id)).filter(Product.is_synthetic == False).scalar() or 0
         if valid_count == 0:
             logging.info("[ANALYTICS][distribution/category] no_data: empty dataset")
             return _response("no_data", reason="empty_dataset")
@@ -276,6 +277,7 @@ def get_distribution_category() -> dict:
                 Product.category.label("category"),
                 func.count(Product.id).label("count"),
             )
+            .filter(Product.is_synthetic == False)
             .group_by(Product.category)
             .order_by(nullslast(desc(func.count(Product.id))))
             .all()
@@ -314,7 +316,7 @@ def get_top_products(limit: int = 10) -> dict:
         if limit <= 0:
             return _response("error", reason="invalid_limit")
 
-        valid_count = db.query(func.count(Product.id)).filter(Product.revenue.isnot(None)).scalar() or 0
+        valid_count = db.query(func.count(Product.id)).filter(Product.revenue.isnot(None), Product.is_synthetic == False).scalar() or 0
         if valid_count == 0:
             logging.info("[ANALYTICS][top/products] no_data: no records with valid revenue")
             return _response("no_data", reason="no_valid_revenue")
@@ -328,7 +330,7 @@ def get_top_products(limit: int = 10) -> dict:
                 Product.status.label("status"),
                 Product.date.label("date"),
             )
-            .filter(Product.revenue.isnot(None))
+            .filter(Product.revenue.isnot(None), Product.is_synthetic == False)
             .order_by(
                 nullslast(desc(Product.revenue)),
                 nullslast(desc(Product.date)),

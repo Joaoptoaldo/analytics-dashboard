@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Date, Float, Integer, String, UniqueConstraint
+﻿from sqlalchemy import Column, Date, Float, Integer, String, UniqueConstraint, Boolean
 
 from backend.db import Base
 
@@ -13,6 +13,7 @@ class Product(Base):
     status = Column(String(50))
     region = Column(String(50), nullable=True, comment="deprecated: kept temporarily for backward compatibility")
     date = Column(Date)
+    is_synthetic = Column(Boolean, default=False, comment="True if record is from seed data (test), False if from external sync (real)")
     __table_args__ = (UniqueConstraint("external_id", name="uq_external_id"),)
 
     def to_dict(self):

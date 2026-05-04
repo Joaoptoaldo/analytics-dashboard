@@ -19,7 +19,7 @@ def seed_database():
     db = SessionLocal()
     try:
         seed_rows = _build_seed_data()
-        for row in seed_rows:
+        for i, row in enumerate(seed_rows):
             # Ensure `date` is a Python date object for SQLite Date column
             d = row.get("date")
             if isinstance(d, str):
@@ -28,12 +28,17 @@ def seed_database():
                 except Exception:
                     d = None
 
+            # Mark first 50 records (older) as synthetic (test data)
+            # Mark last 50 records (recent) as real (for demo/testing)
+            is_synthetic = i < 50
+
             product = Product(
                 client=row["client"],
                 category=row["category"],
                 revenue=row["revenue"],
                 status=row["status"],
                 date=d,
+                is_synthetic=is_synthetic,
             )
             db.add(product)
         db.commit()

@@ -396,7 +396,7 @@ export default function Dashboard() {
           <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <div>
-                <CardTitle>Vendas Temporais - série diária</CardTitle>
+                <CardTitle>Vendas Temporais - {period === 'all' ? 'série mensal' : 'série diária'}</CardTitle>
                 <p className="text-sm text-muted-foreground">Janela ativa: {salesTrendRangeLabel}</p>
               </div>
             </CardHeader>

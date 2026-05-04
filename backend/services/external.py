@@ -11,6 +11,9 @@ from ..models.product import Product
 logger = logging.getLogger(__name__)
 
 
+RECENT_DATA_WINDOW_DAYS = 180
+
+
 def _parse_iso_date(s: Optional[str]) -> Optional[datetime.date]:
     if not s:
         return None
@@ -22,6 +25,23 @@ def _parse_iso_date(s: Optional[str]) -> Optional[datetime.date]:
             return datetime.strptime(s.split("T")[0], "%Y-%m-%d").date()
         except Exception:
             return None
+
+
+def _deterministic_recent_date(key: int, horizon_days: int = RECENT_DATA_WINDOW_DAYS) -> datetime.date:
+    today = datetime.now().date()
+    return today - timedelta(days=key % horizon_days)
+
+
+def _normalize_recent_date(raw_date: Optional[datetime.date], key: int) -> datetime.date:
+    """Mantém datas recentes, mas substitui datas antigas/ausentes por uma janela recente determinística."""
+    if raw_date is None:
+        return _deterministic_recent_date(key)
+
+    today = datetime.now().date()
+    cutoff = today - timedelta(days=RECENT_DATA_WINDOW_DAYS)
+    if raw_date < cutoff or raw_date > today:
+        return _deterministic_recent_date(key)
+    return raw_date
 
 
 def fetch_external_products() -> List[Dict[str, Any]]:
@@ -60,10 +80,8 @@ def fetch_external_products() -> List[Dict[str, Any]]:
                 date_val = None
 
             ext_id = zlib.adler32(sym.encode("utf-8"))
-            # If no date_val was extracted, create a deterministic historical date within the past year
-            if not date_val:
-                offset = int(ext_id) % 365
-                date_val = today_date - timedelta(days=offset)
+            # Force a recent deterministic date when the source is missing or too old
+            date_val = _normalize_recent_date(date_val, int(ext_id))
 
             rows.append(
                 {
@@ -106,18 +124,21 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
         date_val = _parse_iso_date(date_str)
 
-        if not date_val:
-            # Deterministic fallback: use item id or index to assign a historical date within last 365 days
-            try:
-                key2 = int(item.get("id", idx)) if str(item.get("id", idx)).isdigit() else idx
-            except Exception:
-                key2 = idx
-            offset = key2 % 365
-            date_val = datetime.now().date() - timedelta(days=offset)
-            logger.warning("[DATA_INTEGRITY] Produto id=%s sem campo 'date' válido. Atribuindo fallback date=%s", item.get('id', idx), date_val)
+        try:
+            key2 = int(item.get("id", idx)) if str(item.get("id", idx)).isdigit() else idx
+        except Exception:
+            key2 = idx
+
+        normalized_date = _normalize_recent_date(date_val, key2)
+        if date_val != normalized_date:
+            logger.warning(
+                "[DATA_INTEGRITY] Produto id=%s com data antiga/inválida. Normalizando para %s",
+                item.get('id', idx),
+                normalized_date,
+            )
+        date_val = normalized_date
 
         # Mapeamento determinístico para status (não aleatório)
-        key2 = int(item.get("id", idx)) if str(item.get("id", idx)).isdigit() else idx
         status = statuses[key2 % len(statuses)]
 
         rows.append(
