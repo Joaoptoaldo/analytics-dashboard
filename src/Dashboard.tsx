@@ -14,6 +14,7 @@ import { Input } from '../components/ui/input'
 import { Spinner } from '../components/ui/spinner'
 import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
 import { useDebounce } from '../hooks/useDebounce'
+import { getRequiredInternalApiBaseUrl, getOptionalSyncToken, fetchSyncWithToken } from '../lib/api'
 
 import {
   Select,
@@ -81,7 +82,8 @@ export default function Dashboard() {
     error,
   } = useDashboard(filters, tableParams, salesTrendRange)
   const { mutate } = useSWRConfig()
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+  const INTERNAL_API_BASE = getRequiredInternalApiBaseUrl()
+  const SYNC_TOKEN = getOptionalSyncToken()
 
   const [syncLoading, setSyncLoading] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -92,7 +94,7 @@ export default function Dashboard() {
     setSyncError(null)
     setSyncSuccess(false)
     try {
-      const resp = await fetch(`${API_BASE}/external-products/sync`, { method: 'POST' })
+      const resp = await fetchSyncWithToken(`${INTERNAL_API_BASE}/external-products/sync`, SYNC_TOKEN)
       if (!resp.ok) throw new Error('Erro ao sincronizar')
       setSyncSuccess(true)
 
@@ -142,7 +144,7 @@ export default function Dashboard() {
       const date = new Date(p.period)
       if (isNaN(date.getTime())) continue
       const day = date.getDay()
-      const diffToMonday = (day + 6) % 7 // transforma domingo(0) para 6, segunda(1) para 0
+      const diffToMonday = (day + 6) % 7
       const monday = new Date(date)
       monday.setDate(date.getDate() - diffToMonday)
       monday.setHours(0, 0, 0, 0)

@@ -64,20 +64,24 @@ Crie um arquivo `.env` na raiz usando o arquivo [.env.example](.env.example) com
 # === Frontend (Vite - prefixo VITE_) ===
 VITE_API_BASE_URL=http://localhost:8000/api
 VITE_USE_EXTERNAL=true
+# Token opcional para sincronização (deve corresponder a EXTERNAL_SYNC_TOKEN do backend)
+VITE_EXTERNAL_SYNC_TOKEN=
 
 # === Backend (FastAPI - sem prefixo) ===
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 DATABASE_URL=sqlite:///./backend.db
 ENV=development
 ALLOW_SEED=false
+# Segurança da sincronização externa
 EXTERNAL_SYNC_TOKEN=
 EXTERNAL_SYNC_MIN_INTERVAL_SECONDS=60
 ```
 
 **Variaveis obrigatorias:**
-- Frontend: `VITE_API_BASE_URL`
+- Frontend: `VITE_API_BASE_URL` (ex: `https://api.example.com/api` em produção)
 - Backend: `DATABASE_URL`, `CORS_ORIGINS`, `ENV`, `ALLOW_SEED`
-- Sync externo: `EXTERNAL_SYNC_TOKEN`, `EXTERNAL_SYNC_MIN_INTERVAL_SECONDS`
+- Sync externo: `EXTERNAL_SYNC_TOKEN` (frontend e backend devem ter o mesmo valor)
+- Rate limit: `EXTERNAL_SYNC_MIN_INTERVAL_SECONDS` (padrão: 60 segundos)
 
 ### 3. Instalando dependencias
 
@@ -92,7 +96,8 @@ cd backend
 python -m venv .venv
 .venv/Scripts/activate  # Windows
 # source .venv/bin/activate  # Linux/Mac
-pip install -e .
+# Se o projeto tiver um pyproject.toml correto, o comando abaixo instala em modo editable:
+pip install -e . || pip install -r requirements.txt
 ```
 
 ### 4. Executando
@@ -122,7 +127,9 @@ sqlite3 backend.db "VACUUM;"
 ```
 - Sincronizar produtos externos (popula banco):
 ```powershell
-curl -X POST http://127.0.0.1:8000/api/external-products/sync
+# Rota movida para uso interno (server-only). Se você configurar `EXTERNAL_SYNC_TOKEN`, a chamada
+# exige o header `x-internal-token: <token>` e não deve ser exposta a clientes públicos.
+curl -X POST http://127.0.0.1:8000/internal/external-products/sync -H "x-internal-token: $EXTERNAL_SYNC_TOKEN"
 ```
 - Verificar contagem e soma de receita no DB:
 ```powershell

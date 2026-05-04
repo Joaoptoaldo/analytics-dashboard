@@ -17,9 +17,18 @@ Base.metadata.create_all(bind=engine)
 
 
 def _get_client_identifier(request: Request) -> str:
-    if request.client and request.client.host:
-                return request.client.host
-    return "unknown"
+    try:
+        client = request.client
+        if not client:
+            return "unknown"
+        # starlette Request.client can be a tuple (host, port) or an object with .host
+        if hasattr(client, "host"):
+            return client.host
+        if isinstance(client, (list, tuple)) and len(client) > 0:
+            return client[0]
+        return str(client)
+    except Exception:
+        return "unknown"
 
 
 def _enforce_sync_access(request: Request) -> None:

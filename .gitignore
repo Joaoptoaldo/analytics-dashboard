@@ -43,6 +43,10 @@ backend.db
 *.db
 backend/*.db
 
+# Pip audit reports (should not be versioned)
+pip_audit_*.json
+pip_audit_report.json
+
 # Logs
 *.log
 backend.log

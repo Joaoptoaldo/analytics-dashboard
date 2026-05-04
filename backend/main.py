@@ -28,7 +28,9 @@ app = FastAPI(title="Analytics Dashboard API", version="1.0.0")
 app.include_router(products_router, prefix="/api")
 app.include_router(external_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
-app.include_router(external_sync_router, prefix="/api")
+# Rota de sincronização externa movida para prefixo /internal para uso backend-only
+# Evita exposição direta para frontends sem o token apropriado
+app.include_router(external_sync_router, prefix="/internal")
 
 
 init_db()
@@ -239,15 +241,14 @@ def _build_sales_db(db, period="all", category="all", status="all", search=""):
         logging.info(f"[KPI][SALES] Ignorados todos os registros: nenhum com date válido")
         return [{"state": "no_data", "month": None, "revenue": None, "orders": None, "customers": None, "reason": "no_valid_date"}]
     # Agrupar por mês (YYYY-MM)
-    results = db.query(
-
+    # Agrupar por mês (YYYY-MM)
     results = filtered_query.with_entities(
         func.strftime('%Y-%m', Product.date).label('month'),
         func.sum(Product.revenue).label('revenue'),
         func.count(Product.id).label('orders'),
         func.count(distinct(Product.client)).label('customers')
     ).filter(Product.date != None)
-    )
+
     results = results.group_by('month').order_by('month').all()
     logging.info(f"[KPI][SALES] total válidos: {total}, meses: {len(results)}")
     
@@ -263,9 +264,9 @@ def _build_sales_db(db, period="all", category="all", status="all", search=""):
         for r in results
     ]
 
-# Distribuição por Categoria (count)
+# distribuição por Categoria (count)
 def _build_category_distribution_db(db):
-    """_summary_: Calcula a distribuição de produtos por categoria a partir dos dados do banco de dados, onde a resposta inclui uma lista de categorias com a contagem de produtos em cada categoria, além de metadados como estado da resposta e razão para casos de ausência de dados. O endpoint é útil para entender a composição do portfólio de produtos e identificar quais categorias são mais representativas em termos de quantidade, permitindo que os usuários tomem decisões informadas sobre estratégias de marketing, estoque e desenvolvimento de produtos.
+    """_summary_: calcula a distribuição de produtos por categoria a partir dos dados do banco de dados, onde a resposta inclui uma lista de categorias com a contagem de produtos em cada categoria, além de metadados como estado da resposta e razão para casos de ausência de dados. O endpoint é útil para entender a composição do portfólio de produtos e identificar quais categorias são mais representativas em termos de quantidade, permitindo que os usuários tomem decisões informadas sobre estratégias de marketing, estoque e desenvolvimento de produtos.
 
     Args:
         db (_type_): _description_: Instância do banco de dados.

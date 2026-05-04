@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import useSWR from 'swr'
 
-import { fetchJson, unwrapApiResponse } from '../lib/api'
+import { fetchJson, getRequiredApiBaseUrl, unwrapApiResponse } from '../lib/api'
 
 type DashboardOverview = {
   total_revenue: number
@@ -118,7 +118,7 @@ type MetricResult<T> = {
   isLoading: boolean
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const API_BASE = getRequiredApiBaseUrl()
 const DATA_REFRESH_INTERVAL_MS = 30000
 
 const swrRefreshConfig = {

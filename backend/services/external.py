@@ -2,11 +2,14 @@
 from typing import Any, Dict, List
 import os
 import zlib
+import logging
 
 import requests
 
 from backend.db import SessionLocal
 from backend.models.product import Product
+
+logger = logging.getLogger(__name__)
 
 DUMMYJSON_URL = "https://dummyjson.com/products?limit=100"
 
@@ -33,7 +36,8 @@ def fetch_external_products() -> List[Dict[str, Any]]:
     """
     api_key = os.getenv("MARKETSTACK_API_KEY", "").strip()
     if api_key:
-        base = os.getenv("MARKETSTACK_BASE_URL", "http://api.marketstack.com/v1/eod")
+        # Use HTTPS by default for Marketstack base URL
+        base = os.getenv("MARKETSTACK_BASE_URL", "https://api.marketstack.com/v1/eod")
         symbols = [s.strip().upper() for s in os.getenv("MARKETSTACK_SYMBOLS", "AAPL,MSFT,GOOGL").split(",") if s.strip()]
         today = datetime.now().date().strftime("%Y-%m-%d")  # Use data de hoje para Marketstack
         rows: List[Dict[str, Any]] = []
@@ -51,7 +55,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
                     price = 0.0
                     date_str = today
             except Exception as exc:
-                print(f"[EXTERNAL][WARN] Erro ao consultar Marketstack para {sym}: {exc}")
+                logger.warning("[EXTERNAL] Erro ao consultar Marketstack para %s: %s", sym, exc)
                 price = 0.0
 
             ext_id = zlib.adler32(sym.encode("utf-8"))
@@ -96,7 +100,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
         if not date_val:
             # Log estruturado para rastreabilidade
-            print(f"[DATA_INTEGRITY][WARN] Produto id={item.get('id', idx)} sem campo 'date' válido. meta.createdAt={meta.get('createdAt')}")
+            logger.warning("[DATA_INTEGRITY] Produto id=%s sem campo 'date' válido. meta.createdAt=%s", item.get('id', idx), meta.get('createdAt'))
 
         # Mapeamento determinístico para status (não aleatório)
         key2 = int(item.get("id", idx)) if str(item.get("id", idx)).isdigit() else idx

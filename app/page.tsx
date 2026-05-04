@@ -21,7 +21,7 @@ export default function Dashboard() {
   React.useEffect(() => {
     toast({
       title: 'Bem-vindo ao Dashboard!',
-      description: 'Dados mock carregados. Backend em localhost:8000.',
+      description: 'Dashboard carregado. Use o formulário para filtrar dados.',
     })
   }, [toast])
 
@@ -84,10 +84,10 @@ export default function Dashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Vendas Mensais (Recharts próximo)</CardTitle>
-                <CardDescription>Gráfico linha + Filtros</CardDescription>
+                <CardDescription>Dados do backend via API configurada</CardDescription>
               </CardHeader>
               <CardContent className="h-64 bg-muted/30 rounded-md flex items-center justify-center text-muted-foreground">
-                Dados reais backend → localhost:8000/api/sales
+                Aguardando dados da API...
               </CardContent>
             </Card>
           </div>

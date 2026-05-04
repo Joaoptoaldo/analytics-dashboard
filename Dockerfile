@@ -3,28 +3,28 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /app
+ARG DEBIAN_FRONTEND=noninteractive
 
-# Dependências do sistema necessárias para numpy/pandas e psycopg2
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
-    gfortran \
-    libatlas-base-dev \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Atualiza pip
 RUN pip install --upgrade pip
 
-# Copia o arquivo de dependências do backend para aproveitar cache de build
+WORKDIR /app
+
+# Copia apenas requirements para vantagem de cache
 COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install -r /app/backend/requirements.txt
 
-# Instala as dependências reais do backend
-RUN pip install -r backend/requirements.txt
+# Copia apenas o código do backend (evita transferir arquivos sensíveis/monorepo extras)
+COPY backend /app/backend
 
-# Copia o código
-COPY . /app
+# Cria um usuário não-root para rodar a aplicação
+RUN useradd --create-home appuser && chown -R appuser /app
+USER appuser
 
 ENV PORT=8080
 EXPOSE 8080
