@@ -1,45 +1,43 @@
-﻿from datetime import datetime
-from typing import Any, Dict, List
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 import os
 import zlib
 import logging
-
 import requests
 
-from backend.db import SessionLocal
-from backend.models.product import Product
+from ..db import SessionLocal
+from ..models.product import Product
 
 logger = logging.getLogger(__name__)
 
-DUMMYJSON_URL = "https://dummyjson.com/products?limit=100"
 
-
-def _parse_iso_date(date_str: str):
-    if not date_str:
+def _parse_iso_date(s: Optional[str]) -> Optional[datetime.date]:
+    if not s:
         return None
     try:
-        normalized = date_str.replace("Z", "+00:00")
-        return datetime.fromisoformat(normalized).date()
+        # support multiple formats including ISO with Z
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).date()
     except Exception:
         try:
-            return datetime.strptime(date_str[:10], "%Y-%m-%d").date()
+            return datetime.strptime(s.split("T")[0], "%Y-%m-%d").date()
         except Exception:
             return None
 
 
 def fetch_external_products() -> List[Dict[str, Any]]:
-    """Busca dados de mercado via Marketstack quando a chave estiver configurada.
-
-    Se `MARKETSTACK_API_KEY` estiver ausente, mantém o comportamento anterior (DummyJSON).
-    Retorna lista de dicionários com `id` (int), `client` (str), `category` (str),
-    `revenue` (float), `status` (str) e `date` (YYYY-MM-DD | None).
+    """Busca produtos em serviços externos. Tenta Marketstack (se `MARKETSTACK_API_KEY` setado),
+    caso contrário usa DummyJSON como fallback.
+    Ao não encontrar data válida, atribui uma data histórica determinística dentro dos últimos 365 dias.
     """
-    api_key = os.getenv("MARKETSTACK_API_KEY", "").strip()
+    DUMMYJSON_URL = os.getenv("DUMMYJSON_URL", "https://dummyjson.com/products")
+    api_key = os.getenv("MARKETSTACK_API_KEY")
+
+    # Marketstack path (se houver api_key)
     if api_key:
-        # Use HTTPS by default for Marketstack base URL
         base = os.getenv("MARKETSTACK_BASE_URL", "https://api.marketstack.com/v1/eod")
         symbols = [s.strip().upper() for s in os.getenv("MARKETSTACK_SYMBOLS", "AAPL,MSFT,GOOGL").split(",") if s.strip()]
-        today = datetime.now().date().strftime("%Y-%m-%d")  # Use data de hoje para Marketstack
+        # Prepare a deterministic fallback date per symbol within last 365 days
+        today_date = datetime.now().date()
         rows: List[Dict[str, Any]] = []
         for sym in symbols:
             try:
@@ -50,15 +48,23 @@ def fetch_external_products() -> List[Dict[str, Any]]:
                 if items:
                     item = items[0]
                     price = float(item.get("close") or item.get("adj_close") or 0.0)
-                    date_str = today
+                    # Try to extract a date from the response if available
+                    date_str = item.get("date") or item.get("trade_date") or None
+                    date_val = _parse_iso_date(date_str)
                 else:
                     price = 0.0
-                    date_str = today
+                    date_val = None
             except Exception as exc:
                 logger.warning("[EXTERNAL] Erro ao consultar Marketstack para %s: %s", sym, exc)
                 price = 0.0
+                date_val = None
 
             ext_id = zlib.adler32(sym.encode("utf-8"))
+            # If no date_val was extracted, create a deterministic historical date within the past year
+            if not date_val:
+                offset = int(ext_id) % 365
+                date_val = today_date - timedelta(days=offset)
+
             rows.append(
                 {
                     "id": int(ext_id),
@@ -66,16 +72,21 @@ def fetch_external_products() -> List[Dict[str, Any]]:
                     "category": "Market",
                     "revenue": price,
                     "status": "Completed",
-                    "date": date_str,
+                    "date": date_val.strftime("%Y-%m-%d") if date_val else None,
                 }
             )
         return rows
 
     # Fallback: DummyJSON (comportamento legado)
-    resp = requests.get(DUMMYJSON_URL, timeout=10)
-    resp.raise_for_status()
-    data = resp.json()
-    products = data.get("products", [])
+    try:
+        resp = requests.get(DUMMYJSON_URL, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        products = data.get("products", [])
+    except Exception as exc:
+        logger.warning("[EXTERNAL] Erro ao consultar DummyJSON: %s", exc)
+        products = []
+
     statuses = ["Completed", "Processing", "Shipped", "Pending"]
     rows: List[Dict[str, Any]] = []
     for idx, item in enumerate(products):
@@ -86,21 +97,24 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
         # Extrair data: meta.createdAt (primária) > date/createdAt/creation_date (fallback)
         date_str = None
-
-        # Tentar meta.createdAt primeiro (fonte primária: DummyJSON)
-        meta = item.get("meta", {})
+        meta = item.get("meta", {}) or {}
         if meta and "createdAt" in meta:
             date_str = meta.get("createdAt")
 
-        # Fallback para campos top-level (compatibilidade com outras APIs)
         if not date_str:
             date_str = item.get("date") or item.get("createdAt") or item.get("creation_date")
 
         date_val = _parse_iso_date(date_str)
 
         if not date_val:
-            # Log estruturado para rastreabilidade
-            logger.warning("[DATA_INTEGRITY] Produto id=%s sem campo 'date' válido. meta.createdAt=%s", item.get('id', idx), meta.get('createdAt'))
+            # Deterministic fallback: use item id or index to assign a historical date within last 365 days
+            try:
+                key2 = int(item.get("id", idx)) if str(item.get("id", idx)).isdigit() else idx
+            except Exception:
+                key2 = idx
+            offset = key2 % 365
+            date_val = datetime.now().date() - timedelta(days=offset)
+            logger.warning("[DATA_INTEGRITY] Produto id=%s sem campo 'date' válido. Atribuindo fallback date=%s", item.get('id', idx), date_val)
 
         # Mapeamento determinístico para status (não aleatório)
         key2 = int(item.get("id", idx)) if str(item.get("id", idx)).isdigit() else idx
@@ -109,7 +123,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
         rows.append(
             {
                 "id": int(item.get("id", 0)),
-                "client": item.get("title", "")[:255],
+                "client": (item.get("title") or "")[:255],
                 "category": item.get("category", "Other"),
                 "revenue": revenue,
                 "status": status,
@@ -120,10 +134,10 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
 
 def sync_external_products() -> int:
-    """_summary_: Sincroniza produtos externos no banco local por `external_id`.
+    """Sincroniza produtos externos no banco local por `external_id`.
 
     Returns:
-        int: _description_: Quantidade de registros processados (inseridos ou atualizados).
+        int: Quantidade de registros processados (inseridos ou atualizados).
     """
     rows = fetch_external_products()
     db = SessionLocal()
@@ -131,7 +145,7 @@ def sync_external_products() -> int:
         for r in rows:
             ext_id = int(r["id"])
             date_obj = None
-            if r["date"]:
+            if r.get("date"):
                 try:
                     date_obj = datetime.strptime(r["date"], "%Y-%m-%d").date()
                 except Exception:
@@ -160,11 +174,7 @@ def sync_external_products() -> int:
 
 
 def get_persisted_products() -> List[Dict[str, Any]]:
-    """_summary_: Retorna os produtos persistidos no banco local ordenados por data descrescente.
-
-    Returns:
-        List[Dict[str, Any]]: _description_: Lista de produtos no formato de `Product.to_dict()`.
-    """
+    """Retorna os produtos persistidos no banco local ordenados por data descrescente."""
     db = SessionLocal()
     try:
         products = db.query(Product).order_by(Product.date.desc()).all()

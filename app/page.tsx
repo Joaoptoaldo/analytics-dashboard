@@ -1,9 +1,9 @@
 'use client'
 
 import * as React from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { SidebarInset, SidebarTrigger } from '../components/ui/sidebar'
 import { useToast } from '../hooks/use-toast'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 
 // Placeholder para dados - será substituído por hook
 const mockData = {

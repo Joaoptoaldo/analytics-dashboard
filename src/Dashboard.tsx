@@ -14,7 +14,7 @@ import { Input } from '../components/ui/input'
 import { Spinner } from '../components/ui/spinner'
 import { useDashboard, type ProductItem } from '../hooks/use-dashboard'
 import { useDebounce } from '../hooks/useDebounce'
-import { getRequiredInternalApiBaseUrl, getOptionalSyncToken, fetchSyncWithToken } from '../lib/api'
+import { fetchSyncWithToken, getOptionalSyncToken, getRequiredInternalApiBaseUrl } from '../lib/api'
 
 import {
   Select,
@@ -67,6 +67,9 @@ export default function Dashboard() {
 
   const {
     overview,
+    salesMonthly,
+    salesMonthlyState,
+    salesMonthlyReason,
     salesTrend,
     salesTrendState,
     salesTrendReason,
@@ -133,7 +136,15 @@ export default function Dashboard() {
   }
 
   // preparar dados do gráfico antes de quaisquer retornos condicionais
-  const salesTrendData = salesTrend || []
+  const salesTrendData = useMemo(() => {
+    if (period === 'all') {
+      const monthly = salesMonthly || []
+      return monthly.map((m) => ({ period: `${m.month}-01`, revenue: m.revenue, orders: m.orders }))
+    }
+    return salesTrend || []
+  }, [period, salesMonthly, salesTrend])
+  const activeSalesTrendState = period === 'all' ? salesMonthlyState : salesTrendState
+  const activeSalesTrendReason = period === 'all' ? salesMonthlyReason : salesTrendReason
   const aggregatedSalesTrend = useMemo(() => {
     if (!salesTrendData || salesTrendData.length === 0) return salesTrendData
     if (salesTrendRange !== '90d') return salesTrendData
@@ -211,7 +222,7 @@ export default function Dashboard() {
 
   const salesTrendRangeLabel =
     period === 'all'
-      ? '30 dias (fallback quando o filtro está em Tudo)'
+      ? 'Todo o histórico'
       : salesTrendRange === '1y'
         ? '1 ano'
         : salesTrendRange === '180d'

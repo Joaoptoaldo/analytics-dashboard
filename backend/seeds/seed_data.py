@@ -3,6 +3,7 @@
 from backend.db import SessionLocal
 from backend.models.product import Product
 from backend.data import _build_seed_data
+from datetime import datetime
 
 
 def seed_database():
@@ -19,12 +20,20 @@ def seed_database():
     try:
         seed_rows = _build_seed_data()
         for row in seed_rows:
+            # Ensure `date` is a Python date object for SQLite Date column
+            d = row.get("date")
+            if isinstance(d, str):
+                try:
+                    d = datetime.strptime(d[:10], "%Y-%m-%d").date()
+                except Exception:
+                    d = None
+
             product = Product(
                 client=row["client"],
                 category=row["category"],
                 revenue=row["revenue"],
                 status=row["status"],
-                date=row["date"],
+                date=d,
             )
             db.add(product)
         db.commit()
