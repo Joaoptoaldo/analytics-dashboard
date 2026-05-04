@@ -14,17 +14,28 @@ router = APIRouter()
 
 
 @router.get("/sales/monthly", response_model=AnalyticsResponse)
-def sales_monthly_router():
+def sales_monthly_router(
+    period: str = Query(default="all"),
+    category: str = Query(default="all"),
+    status: str = Query(default="all"),
+    search: str = Query(default=""),
+):
     """_summary_: Retorna a série mensal de vendas agregada por mês.
 
     Returns:
         _type_: _description_: AnalyticsResponse com estado da operação e lista em `data` contendo os campos `month`, `revenue`, `orders` e `date_source`.
     """
-    return get_sales_monthly()
+    return get_sales_monthly(period=period, category=category, status=status, search=search)
 
 
 @router.get("/sales/trend", response_model=SalesTrendResponse)
-def sales_trend_router(range: str = Query(default="30d", pattern="^(30d|90d|180d|1y)$")):
+def sales_trend_router(
+    range: str = Query(default="30d", pattern="^(30d|90d|180d|1y)$"),
+    period: str = Query(default="all"),
+    category: str = Query(default="all"),
+    status: str = Query(default="all"),
+    search: str = Query(default=""),
+):
     """_summary_: Retorna a tendência de vendas no intervalo solicitado.
 
     Args:
@@ -33,7 +44,7 @@ def sales_trend_router(range: str = Query(default="30d", pattern="^(30d|90d|180d
     Returns:
         _type_: _description_: SalesTrendResponse com `state`, `range` e série em `data` contendo `period`, `revenue` e `orders`.
     """
-    return get_sales_trend(range_value=range)
+    return get_sales_trend(range_value=range, period=period, category=category, status=status, search=search)
 
 
 @router.get("/distribution/category", response_model=AnalyticsResponse)

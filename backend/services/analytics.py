@@ -102,7 +102,7 @@ def _trend_bucket_step(bucket_start: date, range_value: str) -> date:
     return bucket_start + timedelta(days=1)
 
 
-def get_sales_monthly() -> dict:
+def get_sales_monthly(period: str = "all", category: str = "all", status: str = "all", search: str = "") -> dict:
     """_summary_: Calcula a receita mensal agregada por mes com contagem de pedidos.
 
     Returns:
@@ -110,7 +110,26 @@ def get_sales_monthly() -> dict:
     """
     db = SessionLocal()
     try:
-        valid_count = db.query(func.count(Product.id)).filter(Product.date.isnot(None)).scalar() or 0
+        # build base query and apply filters (period, category, status, search)
+        base_query = db.query(Product).filter(Product.date.isnot(None))
+        if period != "all":
+            days_map = {"30d": 30, "90d": 90, "180d": 180, "1y": 365, "365d": 365}
+            days = days_map.get(period, 365)
+            latest_date = db.query(func.max(Product.date)).scalar()
+            if latest_date is not None:
+                min_date = latest_date - timedelta(days=days - 1)
+                base_query = base_query.filter(Product.date >= min_date)
+        if category != "all":
+            base_query = base_query.filter(Product.category == category)
+        if status != "all":
+            base_query = base_query.filter(Product.status == status)
+        if search:
+            search_term = f"%{search.strip().lower()}%"
+            base_query = base_query.filter(
+                Product.client.ilike(search_term) | Product.category.ilike(search_term)
+            )
+
+        valid_count = base_query.with_entities(func.count(Product.id)).scalar() or 0
         logging.info(f"[ANALYTICS][sales/monthly] valid_count: {valid_count}")
         if valid_count == 0:
             logging.info("[ANALYTICS][sales/monthly] no_data: no records with valid date")
@@ -118,12 +137,11 @@ def get_sales_monthly() -> dict:
 
         month_expr = _month_bucket_expr(db)
         rows = (
-            db.query(
+            base_query.with_entities(
                 month_expr.label("month"),
                 func.sum(Product.revenue).label("revenue"),
                 func.count(Product.id).label("orders"),
             )
-            .filter(Product.date.isnot(None))
             .group_by(month_expr)
             .order_by(month_expr.asc())
             .all()
@@ -151,7 +169,7 @@ def get_sales_monthly() -> dict:
         db.close()
 
 
-def get_sales_trend(range_value: str = "30d") -> dict:
+def get_sales_trend(range_value: str = "30d", period: str = "all", category: str = "all", status: str = "all", search: str = "") -> dict:
     """_summary_: Calcula serie de tendencia de receita/pedidos para uma janela temporal.
 
     Args:
@@ -166,12 +184,24 @@ def get_sales_trend(range_value: str = "30d") -> dict:
             logging.info(f"[ANALYTICS][sales/trend] invalid range: {range_value}")
             return _response("error", reason="invalid_range")
 
-        rows = (
-            db.query(Product.date.label("date"), Product.revenue.label("revenue"))
-            .filter(Product.date.isnot(None))
-            .filter(Product.revenue.isnot(None))
-            .all()
-        )
+        # build base query and apply filters
+        base_query = db.query(Product.date.label("date"), Product.revenue.label("revenue")).filter(Product.date.isnot(None)).filter(Product.revenue.isnot(None))
+        if period != "all":
+            days_map = {"30d": 30, "90d": 90, "180d": 180, "1y": 365, "365d": 365}
+            days = days_map.get(period, 365)
+            latest_date = db.query(func.max(Product.date)).scalar()
+            if latest_date is not None:
+                min_date = latest_date - timedelta(days=days - 1)
+                base_query = base_query.filter(Product.date >= min_date)
+        if category != "all":
+            base_query = base_query.filter(Product.category == category)
+        if status != "all":
+            base_query = base_query.filter(Product.status == status)
+        if search:
+            search_term = f"%{search.strip().lower()}%"
+            base_query = base_query.filter(Product.client.ilike(search_term) | Product.category.ilike(search_term))
+
+        rows = base_query.all()
 
         if not rows:
             logging.info("[ANALYTICS][sales/trend] no_data: no valid rows in database")

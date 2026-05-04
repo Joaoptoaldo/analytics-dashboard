@@ -182,16 +182,23 @@ function useMetricEndpoint<T>(key: string, url: string): MetricResult<T> {
   }
 }
 
-function useSalesTrend(trendRange: SalesTrendRange): MetricResult<SalesTrendPoint> {
+function useSalesTrend(trendRange: SalesTrendRange, baseQuery?: string): MetricResult<SalesTrendPoint> {
+  const qs = baseQuery ? `${baseQuery}&range=${trendRange}` : `range=${trendRange}`
   return useMetricEndpoint<SalesTrendPoint>(
-    `/api/sales/trend?range=${trendRange}`,
-    `${API_BASE}/sales/trend?range=${trendRange}`,
+    `/api/sales/trend?${qs}`,
+    `${API_BASE}/sales/trend?${qs}`,
   )
 }
 
-export function useSales() {
-  const salesMonthly = useMetricEndpoint<SalesPoint>('/api/sales/monthly', `${API_BASE}/sales/monthly`)
-  const ticketAverage = useMetricEndpoint<TicketAveragePoint>('/api/metrics/ticket-average', `${API_BASE}/metrics/ticket-average`)
+export function useSales(baseQuery?: string) {
+  const salesMonthly = useMetricEndpoint<SalesPoint>(
+    `/api/sales/monthly${baseQuery ? `?${baseQuery}` : ''}`,
+    `${API_BASE}/sales/monthly${baseQuery ? `?${baseQuery}` : ''}`,
+  )
+  const ticketAverage = useMetricEndpoint<TicketAveragePoint>(
+    `/api/metrics/ticket-average${baseQuery ? `?${baseQuery}` : ''}`,
+    `${API_BASE}/metrics/ticket-average${baseQuery ? `?${baseQuery}` : ''}`,
+  )
 
   return {
     salesMonthly: salesMonthly.data,
@@ -258,9 +265,9 @@ export function useDashboard(filters: DashboardFilters, tableParams: TableParams
     swrRefreshConfig,
   )
 
-  const sales = useSales()
+  const sales = useSales(baseQuery)
   const analytics = useAnalytics()
-  const salesTrend = useSalesTrend(salesTrendRange)
+  const salesTrend = useSalesTrend(salesTrendRange, baseQuery)
 
   return {
     overview,
