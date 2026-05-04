@@ -38,7 +38,7 @@ def get_products_service(period, category, region, status, search, page, page_si
 
     db = SessionLocal()
     try:
-        query = db.query(Product)
+        query = db.query(Product).filter(Product.is_synthetic == False)
 
         # Filtros
         if period != "all":

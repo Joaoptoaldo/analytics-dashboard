@@ -1,0 +1,157 @@
+{
+  "state": "valid",
+  "range": "30d",
+  "reason": null,
+  "data": [
+    {
+      "period": "2026-01-28",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-01-29",
+      "revenue": 0.0,
+      "orders": 1
+    },
+    {
+      "period": "2026-01-30",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-01-31",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-01",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-02",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-03",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-04",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-05",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-06",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-07",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-08",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-09",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-10",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-11",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-12",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-13",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-14",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-15",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-16",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-17",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-18",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-19",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-20",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-21",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-22",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-23",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-24",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-25",
+      "revenue": 0.0,
+      "orders": 0
+    },
+    {
+      "period": "2026-02-26",
+      "revenue": 0.0,
+      "orders": 1
+    }
+  ]
+}

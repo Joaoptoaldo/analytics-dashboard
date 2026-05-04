@@ -1,0 +1,78 @@
+{
+  "state": "valid",
+  "reason": null,
+  "data": [
+    {
+      "month": "2024-01",
+      "avg_ticket": 1658.1,
+      "orders": 11,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-02",
+      "avg_ticket": 2787.93,
+      "orders": 9,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-03",
+      "avg_ticket": 2116.74,
+      "orders": 11,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-04",
+      "avg_ticket": 3324.62,
+      "orders": 10,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-05",
+      "avg_ticket": 3254.96,
+      "orders": 10,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-06",
+      "avg_ticket": 1619.48,
+      "orders": 10,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-07",
+      "avg_ticket": 1741.44,
+      "orders": 10,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-08",
+      "avg_ticket": 2514.0,
+      "orders": 11,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-09",
+      "avg_ticket": 2213.58,
+      "orders": 10,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-10",
+      "avg_ticket": 3754.39,
+      "orders": 8,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2026-01",
+      "avg_ticket": 0.0,
+      "orders": 2,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2026-02",
+      "avg_ticket": 0.0,
+      "orders": 1,
+      "date_source": "external.meta.createdAt"
+    }
+  ]
+}

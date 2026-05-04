@@ -1,0 +1,54 @@
+{
+  "state": "valid",
+  "reason": null,
+  "data": [
+    {
+      "month": "2024-05",
+      "revenue": 4536.56,
+      "orders": 1,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-06",
+      "revenue": 16194.84,
+      "orders": 10,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-07",
+      "revenue": 17414.399999999998,
+      "orders": 10,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-08",
+      "revenue": 27653.96,
+      "orders": 11,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-09",
+      "revenue": 22135.8,
+      "orders": 10,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2024-10",
+      "revenue": 30035.149999999998,
+      "orders": 8,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2026-01",
+      "revenue": 0.0,
+      "orders": 2,
+      "date_source": "external.meta.createdAt"
+    },
+    {
+      "month": "2026-02",
+      "revenue": 0.0,
+      "orders": 1,
+      "date_source": "external.meta.createdAt"
+    }
+  ]
+}

@@ -269,7 +269,7 @@ export default function Dashboard() {
         fontSize={11}
         fontWeight={600}
       >
-        {`${(percent * 100).toFixed(0)}%`}
+        {`${(percent * 100).toFixed(1)}%`}
       </text>
     )
   }
