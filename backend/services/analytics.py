@@ -184,7 +184,7 @@ def get_sales_trend(range_value: str = "30d", period: str = "all", category: str
             logging.info(f"[ANALYTICS][sales/trend] invalid range: {range_value}")
             return _response("error", reason="invalid_range")
 
-        # build base query and apply filters
+    
         base_query = db.query(Product.date.label("date"), Product.revenue.label("revenue")).filter(Product.date.isnot(None)).filter(Product.revenue.isnot(None))
         if period != "all":
             days_map = {"30d": 30, "90d": 90, "180d": 180, "1y": 365, "365d": 365}

@@ -401,19 +401,19 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="h-80">
-              {salesTrendState === 'error' ? (
+              {activeSalesTrendState === 'error' ? (
                 <Empty>
                   <EmptyHeader>
                     <EmptyTitle>Não foi possível carregar a tendência de vendas</EmptyTitle>
                     <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
-              ) : salesTrendState !== 'valid' || salesTrendData.length <= 1 ? (
+              ) : activeSalesTrendState !== 'valid' || salesTrendData.length <= 1 ? (
                 <Empty>
                   <EmptyHeader>
                     <EmptyTitle>Sem dados suficientes para a tendência</EmptyTitle>
                     <EmptyDescription>
-                      {salesTrendReason || 'É necessário mais de um ponto temporal válido para renderizar a linha.'}
+                      {activeSalesTrendReason || 'É necessário mais de um ponto temporal válido para renderizar a linha.'}
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>

@@ -295,6 +295,6 @@ export function useDashboard(filters: DashboardFilters, tableParams: TableParams
       sales.isLoading ||
       salesTrend.isLoading ||
       analytics.isLoading,
-    error: overviewError ?? productsError ?? filterOptionsError ?? sales.error ?? salesTrend.error ?? analytics.error,
+    error: overviewError ?? productsError ?? filterOptionsError,
   }
 }
