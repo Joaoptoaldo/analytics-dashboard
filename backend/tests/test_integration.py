@@ -28,11 +28,15 @@ def _reset_sync_state():
 
 
 def test_get_sales_endpoint():
-    """Validate /api/sales returns 200 with valid data"""
+    """Validate /api/sales returns 200 with standardized {state, data, reason} contract"""
     resp = client.get("/api/sales")
     assert resp.status_code == 200
     data = resp.json()
-    assert isinstance(data, list)
+    assert isinstance(data, dict), f"Expected dict, got {type(data)}"
+    assert "state" in data, f"Missing 'state' in /api/sales response"
+    assert "data" in data, f"Missing 'data' in /api/sales response"
+    assert "reason" in data, f"Missing 'reason' in /api/sales response"
+    assert isinstance(data["data"], list), f"Expected 'data' to be list"
 
 
 def test_get_overview_endpoint():

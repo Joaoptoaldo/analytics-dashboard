@@ -7,6 +7,10 @@ from typing import Any
 from dotenv import load_dotenv
 from sqlalchemy import distinct, func, or_
 
+# IMPORTANTE: Importar config validado PRIMEIRO
+# Isso vai falhar se variáveis de ambiente estiverem inválidas (fail-fast)
+from backend.config import CORS_ORIGINS, EXTERNAL_SYNC_TOKEN, IS_PRODUCTION
+
 from backend.data import CATEGORIES, STATUSES
 from backend.db import SessionLocal, init_db
 from backend.metrics_engine import get_total_revenue
@@ -53,7 +57,7 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
                     headers={
                         "Access-Control-Allow-Origin": origin,
                         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-                        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+                        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, x-internal-token",
                         "Access-Control-Allow-Credentials": "true" if self.allow_credentials else "false",
                         "Access-Control-Max-Age": "3600",
                     }
@@ -67,7 +71,7 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
         if "*" in self.allow_origins or origin in self.allow_origins:
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, x-internal-token"
             if self.allow_credentials:
                 response.headers["Access-Control-Allow-Credentials"] = "true"
         
@@ -86,10 +90,65 @@ app.add_middleware(
     allow_credentials=allow_credentials,
 )
 
+
+# Global error handlers (fail-safe, don't expose internals)
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTPException with safe error format"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "state": "error",
+            "reason": exc.detail if isinstance(exc.detail, str) else "http_error",
+            "data": []
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle all other exceptions with generic safe message (don't expose stack trace)"""
+    logging.error(f"[ERROR] Unhandled exception: {exc.__class__.__name__}", exc_info=False)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "state": "error",
+            "reason": "internal_server_error",
+            "data": []
+        }
+    )
+
+
 # Endpoint de teste para diagnosticar CORS
 @app.get("/api/test-cors")
 def test_cors():
     return {"message": "CORS is working!"}
+
+
+# Health check endpoints for production (Fly.io)
+@app.get("/health")
+def health_check():
+    """Liveness probe: service is running"""
+    return {"status": "ok", "service": "dashboard-backend"}
+
+
+@app.get("/readiness")
+def readiness_check():
+    """Readiness probe: service is ready to accept traffic (DB connection verified)"""
+    try:
+        db = SessionLocal()
+        # Simple query to verify DB connection
+        db.query(Product).limit(1).all()
+        db.close()
+        return {"status": "ready", "database": "ok"}
+    except Exception as e:
+        logging.error(f"[READINESS] Database connection failed: {e.__class__.__name__}", exc_info=False)
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "database": "failed", "reason": "db_connection_error"}
+        )
 
 
 def _get_period_reference_date(db):
@@ -366,7 +425,8 @@ async def get_sales(
     status: str = Query(default="all"),
     search: str = Query(default=""),
 ):
-    """_summary_: Endpoint de vendas; no estado atual retorna sem aplicar filtros recebidos.
+    """_summary_: [DEPRECATED] Use /api/sales/monthly instead. 
+    Endpoint de vendas com contrato padronizado: {state, data, reason}.
 
     Args:
         period (str, optional): _description_. Defaults to Query(default="all").
@@ -376,13 +436,29 @@ async def get_sales(
         search (str, optional): _description_. Defaults to Query(default="").
 
     Returns:
-        _type_: _description_: Lista de dicionários representando a série mensal de vendas, onde cada dicionário contém os campos "month" (mês no formato "MMM YYYY"), "revenue" (receita total para aquele mês), "orders" (número total de pedidos naquele mês) e "customers" (número total de clientes únicos naquele mês). A série é calculada a partir dos dados do banco de dados, aplicando os filtros recebidos como parâmetros. O endpoint é útil para visualizar a evolução da receita, número de pedidos e clientes ao longo do tempo, permitindo identificar padrões sazonais e tendências de crescimento ou declínio.
+        _type_: _description_: AnalyticsResponse {state, data, reason} onde data é uma lista de dicionários com campos "month", "period", "revenue", "orders" e "customers".
     """
     if region != "all":
         logging.warning("[DEPRECATED] region filter ignored")
     db = SessionLocal()
     try:
-        return _build_sales_db(db, period, category, status, search)
+        result = _build_sales_db(db, period, category, status, search)
+        # Transform [list] response to {state, data, reason} format
+        if result and isinstance(result, list) and len(result) > 0:
+            first_item = result[0]
+            if "state" in first_item and first_item["state"] in ["no_data", "error"]:
+                # Error case
+                return {
+                    "state": first_item.get("state", "error"),
+                    "data": [],
+                    "reason": first_item.get("reason", "unknown_error")
+                }
+        # Success case
+        return {
+            "state": "valid",
+            "data": result if isinstance(result, list) else [],
+            "reason": None
+        }
     finally:
         db.close()
 
@@ -392,20 +468,54 @@ async def get_sales(
 # Nova rota: Distribuição por Categoria
 @app.get("/api/category-distribution")
 async def get_category_distribution():
-    """Endpoint de distribuicao por categoria"""
+    """[DEPRECATED] Use /api/distribution/category instead.
+    Endpoint de distribuição por categoria com contrato padronizado: {state, data, reason}"""
     db = SessionLocal()
     try:
-        return _build_category_distribution_db(db)
+        result = _build_category_distribution_db(db)
+        # Transform [list] response to {state, data, reason} format
+        if result and isinstance(result, list) and len(result) > 0:
+            first_item = result[0]
+            if "state" in first_item and first_item["state"] in ["no_data", "error"]:
+                # Error case
+                return {
+                    "state": first_item.get("state", "error"),
+                    "data": [],
+                    "reason": first_item.get("reason", "unknown_error")
+                }
+        # Success case
+        return {
+            "state": "valid",
+            "data": result if isinstance(result, list) else [],
+            "reason": None
+        }
     finally:
         db.close()
 
 # Nova rota: Receita por Categoria
 @app.get("/api/category-revenue")
 async def get_category_revenue():
-    """Endpoint de receita por categoria; no estado atual retorna sem aplicar filtros recebidos"""
+    """[DEPRECATED] Use /api/distribution/category instead.
+    Endpoint de receita por categoria com contrato padronizado: {state, data, reason}"""
     db = SessionLocal()
     try:
-        return _build_category_revenue_db(db)
+        result = _build_category_revenue_db(db)
+        # Transform [list] response to {state, data, reason} format
+        if result and isinstance(result, list) and len(result) > 0:
+            first_item = result[0]
+            if "state" in first_item and first_item["state"] in ["no_data", "error"]:
+                # Error case
+                return {
+                    "state": first_item.get("state", "error"),
+                    "data": [],
+                    "reason": first_item.get("reason", "unknown_error")
+                }
+        # Success case
+        return {
+            "state": "valid",
+            "data": result if isinstance(result, list) else [],
+            "reason": None
+        }
     finally:
         db.close()
 
@@ -434,21 +544,35 @@ async def get_filters():
 
 @app.get("/api/activity")
 async def get_activity():
-    # Mock temporário removendo a aleatoriedade pura para consistência
-    return [{"hour": f"{h:02d}:00", "active_users": 0} for h in range(24)]
+    """[DEPRECATED] Activity endpoint with standardized contract: {state, data, reason}"""
+    # Mock data for consistency
+    data = [{"hour": f"{h:02d}:00", "active_users": 0} for h in range(24)]
+    return {
+        "state": "valid",
+        "data": data,
+        "reason": None
+    }
 
 
 @app.get("/api/recent-orders")
 async def get_recent_orders():
-    """_summary_: Retorna uma lista dos 10 pedidos mais recentes, onde cada pedido inclui um ID formatado, nome do cliente, valor da receita, status do pedido e data. Os pedidos são obtidos do banco de dados local, ordenados por data em ordem decrescente, e limitados aos 10 registros mais recentes. O endpoint é útil para exibir uma visão geral das atividades de vendas recentes e monitorar o desempenho em tempo real.
+    """[DEPRECATED] Use /api/products instead.
+    Endpoint com contrato padronizado: {state, data, reason}.
+    Retorna os 10 pedidos mais recentes.
 
     Returns:
-        _type_: _description_: Lista de dicionários representando os 10 pedidos mais recentes, onde cada dicionário contém os campos "id" (ID formatado do pedido), "customer" (nome do cliente), "amount" (valor da receita), "status" (status do pedido) e "date" (data do pedido). Os pedidos são ordenados por data em ordem decrescente.
+        _type_: _description_: AnalyticsResponse {state, data, reason} onde data é uma lista dos 10 pedidos mais recentes.
     """
     db = SessionLocal()
     try:
         latest = db.query(Product).filter(Product.date != None).order_by(Product.date.desc()).limit(10).all()
-        return [
+        if not latest:
+            return {
+                "state": "no_data",
+                "data": [],
+                "reason": "no_recent_orders"
+            }
+        data = [
             {
                 "id": f"ORD-{item.id:05d}",
                 "customer": item.client,
@@ -458,6 +582,11 @@ async def get_recent_orders():
             }
             for item in latest
         ]
+        return {
+            "state": "valid",
+            "data": data,
+            "reason": None
+        }
     finally:
         db.close()
 

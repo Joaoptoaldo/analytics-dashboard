@@ -32,11 +32,28 @@ def _get_client_identifier(request: Request) -> str:
 
 
 def _enforce_sync_access(request: Request) -> None:
+    """Enforce token-based access control for sync endpoint (fail-closed).
+    
+    SECURITY: Token is REQUIRED. If not configured, sync is disabled.
+    This prevents unauthorized synchronization even if endpoint exists.
+    """
     expected_token = os.getenv("EXTERNAL_SYNC_TOKEN", "").strip()
-    if expected_token:
-        provided_token = request.headers.get("x-internal-token", "").strip()
-        if provided_token != expected_token:
-            raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # CRITICAL: Fail-closed. No token configured = endpoint disabled.
+    if not expected_token:
+        raise HTTPException(
+            status_code=500, 
+            detail="Sync endpoint not configured (EXTERNAL_SYNC_TOKEN not set)"
+        )
+    
+    provided_token = request.headers.get("x-internal-token", "").strip()
+    
+    # Fail-closed: no token provided or wrong token = 401
+    if not provided_token or provided_token != expected_token:
+        raise HTTPException(
+            status_code=401, 
+            detail="Invalid or missing sync token"
+        )
 
 
 def _enforce_sync_rate_limit(request: Request) -> None:

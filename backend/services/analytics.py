@@ -163,8 +163,8 @@ def get_sales_monthly(period: str = "all", category: str = "all", status: str = 
             for row in rows
         ]
         return _response("valid", data=data)
-    except Exception:
-        logging.exception("[ANALYTICS][sales/monthly] error")
+    except Exception as exc:
+        logging.error(f"[ANALYTICS][sales/monthly] error: {exc.__class__.__name__}", exc_info=False)
         return _response("error", reason="query_failed")
     finally:
         db.close()
@@ -186,7 +186,7 @@ def get_sales_trend(range_value: str = "30d", period: str = "all", category: str
             return _response("error", reason="invalid_range")
 
     
-        base_query = db.query(Product.date.label("date"), Product.revenue.label("revenue")).filter(Product.date.isnot(None)).filter(Product.revenue.isnot(None))
+        base_query = db.query(Product.date.label("date"), Product.revenue.label("revenue")).filter(Product.date.isnot(None)).filter(Product.revenue.isnot(None)).filter(Product.is_synthetic == False)
         if period != "all":
             days_map = {"30d": 30, "90d": 90, "180d": 180, "1y": 365, "365d": 365}
             days = days_map.get(period, 365)
@@ -252,8 +252,8 @@ def get_sales_trend(range_value: str = "30d", period: str = "all", category: str
             return {"state": "no_data", "range": range_value, "reason": "no_valid_data_in_range", "data": []}
 
         return {"state": "valid", "range": range_value, "data": data}
-    except Exception:
-        logging.exception("[ANALYTICS][sales/trend] error")
+    except Exception as exc:
+        logging.error(f"[ANALYTICS][sales/trend] error: {exc.__class__.__name__}", exc_info=False)
         return {"state": "error", "range": range_value, "reason": "query_failed", "data": []}
     finally:
         db.close()
@@ -295,8 +295,8 @@ def get_distribution_category() -> dict:
             for row in rows
         ]
         return _response("valid", data=data)
-    except Exception:
-        logging.exception("[ANALYTICS][distribution/category] error")
+    except Exception as exc:
+        logging.error(f"[ANALYTICS][distribution/category] error: {exc.__class__.__name__}", exc_info=False)
         return _response("error", reason="query_failed")
     finally:
         db.close()
@@ -357,8 +357,8 @@ def get_top_products(limit: int = 10) -> dict:
             for row in rows
         ]
         return _response("valid", data=data)
-    except Exception:
-        logging.exception("[ANALYTICS][top/products] error")
+    except Exception as exc:
+        logging.error(f"[ANALYTICS][top/products] error: {exc.__class__.__name__}", exc_info=False)
         return _response("error", reason="query_failed")
     finally:
         db.close()
@@ -414,8 +414,8 @@ def get_ticket_average() -> dict:
             for row in rows
         ]
         return _response("valid", data=data)
-    except Exception:
-        logging.exception("[ANALYTICS][metrics/ticket-average] error")
+    except Exception as exc:
+        logging.error(f"[ANALYTICS][metrics/ticket-average] error: {exc.__class__.__name__}", exc_info=False)
         return _response("error", reason="query_failed")
     finally:
         db.close()

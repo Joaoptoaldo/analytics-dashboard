@@ -37,6 +37,12 @@ def test_sales_returns_data_after_insert():
     resp = client.get("/api/sales")
     assert resp.status_code == 200
     data = resp.json()
-    assert isinstance(data, list)
-    # Should contain at least one entry (monthly aggregation)
-    assert any(item.get("revenue") is not None for item in data)
+    # Response should be {state, data, reason}
+    assert isinstance(data, dict)
+    assert "state" in data
+    assert "data" in data
+    assert "reason" in data
+    assert data["state"] == "valid"
+    # Data should be a list containing monthly aggregation
+    assert isinstance(data["data"], list)
+    assert any(item.get("revenue") is not None for item in data["data"])

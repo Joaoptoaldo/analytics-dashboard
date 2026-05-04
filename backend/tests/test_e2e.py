@@ -27,17 +27,22 @@ def _reset_sync_state():
 def test_frontend_can_fetch_sales():
     """
     Simulates: Frontend calling fetch(`http://localhost:8000/api/sales`)
-    Expected: Returns array of monthly sales data
+    NOTE: This endpoint is DEPRECATED. Dashboard.tsx uses /api/sales/monthly instead.
+    Expected: Returns {state, data, reason} with monthly sales data
     """
-    # This is what Dashboard.tsx calls
+    # Legacy endpoint (deprecated, replaced by /api/sales/monthly)
     resp = client.get("/api/sales")
     
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
     data = resp.json()
     
-    # Should be a list (monthly aggregates)
-    assert isinstance(data, list), f"Expected list, got {type(data)}"
-    print(f"✓ Frontend can fetch sales: {len(data)} months found")
+    # Should now be {state, data, reason} format
+    assert isinstance(data, dict), f"Expected dict, got {type(data)}"
+    assert "state" in data, f"Missing 'state' in response: {data}"
+    assert "data" in data, f"Missing 'data' in response: {data}"
+    assert "reason" in data, f"Missing 'reason' in response: {data}"
+    assert isinstance(data["data"], list), f"Expected 'data' to be list, got {type(data['data'])}"
+    print(f"✓ Legacy /api/sales endpoint works with standardized contract: state={data['state']}")
 
 
 def test_frontend_can_fetch_overview():

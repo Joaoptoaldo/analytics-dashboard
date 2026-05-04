@@ -2,9 +2,19 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./backend.db")
+# IMPORTANTE: Não usar fallback silencioso para DATABASE_URL
+# Importar config validado (vai falhar se DATABASE_URL inválido)
+from backend.config import DATABASE_URL
 
-# Configuração do engine para SQLite ou outros bancos
+# DATABASE_URL já foi validado em backend/config.py
+# Se chegou aqui, está OK para usar
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL não pode ser None. "
+        "Verifique backend/config.py para validação de variáveis de ambiente."
+    )
+
+# Configuração do engine para PostgreSQL (produção) ou SQLite (desenvolvimento validado)
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:

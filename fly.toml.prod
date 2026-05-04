@@ -1,0 +1,106 @@
+# fly.toml — Configuração de Produção para Fly.io (PRODUCTION-GRADE)
+# 
+# ⚠️ IMPORTANTE: Este arquivo contém valores placeholder.
+# Substitua pelos valores REAIS de sua infraestrutura antes de fazer deploy.
+
+app = "dashboard-backend"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# ============================================================================
+# [env] — VARIÁVEIS DE AMBIENTE OBRIGATÓRIAS PARA PRODUÇÃO
+# ============================================================================
+# 
+# REGRAS:
+# - DATABASE_URL: DEVE ser PostgreSQL (postgresql://...), NUNCA SQLite
+# - CORS_ORIGINS: Whitelist explícita, NUNCA "*" em produção
+# - EXTERNAL_SYNC_TOKEN: Token seguro (32+ chars) para autenticar sync endpoint
+# - ENV: DEVE ser "production"
+# - ALLOW_SEED: DEVE ser "false" (impede sobrescrita de dados)
+#
+# Se alguma variável estiver inválida/faltando, o sistema BLOQUEARÁ o startup.
+# Não há fallback silencioso — falha é VISÍVEL.
+
+[env]
+  # DATABASE_URL: Conexão PostgreSQL de produção
+  # Formato: postgresql://[user[:password]@][netloc][:port][/dbname]
+  # Exemplo: postgresql://user:password@db.neon.tech/dashboard?sslmode=require
+  # ⚠️ NÃO use SQLite em produção (dados perdidos em restart)
+  DATABASE_URL = "postgresql://neon_user:neon_password@db-endpoint.neon.tech/dashboard?sslmode=require"
+
+  # CORS_ORIGINS: Domínios permitidos para CORS (whitelist explícita)
+  # Separe múltiplos domínios com vírgula
+  # Exemplo: https://dashboard.example.com,https://www.dashboard.example.com
+  # ⚠️ NÃO use "http://localhost" ou "*" em produção
+  CORS_ORIGINS = "https://dashboard.example.com,https://www.dashboard.example.com"
+
+  # EXTERNAL_SYNC_TOKEN: Token para autenticação do endpoint /internal/external-products/sync
+  # Gere um valor aleatório seguro (32+ caracteres)
+  # Exemplo: openssl rand -hex 16 (no terminal)
+  # ⚠️ NÃO use valores triviais (ex: "secret", "token123")
+  EXTERNAL_SYNC_TOKEN = "gerar-token-aleatorio-seguro-32-chars-aqui"
+
+  # ENV: Modo de operação
+  # PROD: "production" (validação estrita, sem fallback)
+  # DEV: "development" (validação flexível, útil para testes)
+  ENV = "production"
+
+  # ALLOW_SEED: Permitir dados de seed ao iniciar?
+  # PROD: "false" (CRÍTICO — impede sobrescrita de dados)
+  # DEV: "true" ou "false" (livre escolha)
+  ALLOW_SEED = "false"
+
+# ============================================================================
+# [services] — Configuração de porta e concorrência
+# ============================================================================
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls"]
+    port = 443
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+
+# ============================================================================
+# [checks] — Health checks para produção
+# ============================================================================
+# 
+# Fly.io usará esses checks para:
+# - Liveness: saber se app está rodando
+# - Readiness: saber se app está pronto para tráfego
+#
+
+[checks]
+  [checks.http]
+    grace_period = "10s"
+    interval = "30s"
+    method = "get"
+    path = "/readiness"
+    protocol = "http"
+    timeout = "10s"
+    type = "http"
+
+# ============================================================================
+# CHECKLIST ANTES DE FAZER "fly deploy"
+# ============================================================================
+#
+# ☐ Substituir DATABASE_URL pela URL REAL de PostgreSQL
+# ☐ Substituir CORS_ORIGINS pelos domínios finais (sem localhost)
+# ☐ Substituir EXTERNAL_SYNC_TOKEN por valor seguro (32+ chars)
+# ☐ Validar que ENV=production
+# ☐ Validar que ALLOW_SEED=false
+# ☐ Testar build local: pnpm build (com VITE_API_BASE_URL definido)
+# ☐ Testar health check: curl http://localhost:8000/readiness
+# ☐ Testar API endpoint: curl http://localhost:8000/api/overview
+#
