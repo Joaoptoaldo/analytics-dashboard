@@ -18,6 +18,8 @@ services:
         fromSecret: CORS_ORIGINS
       - key: EXTERNAL_SYNC_TOKEN
         fromSecret: EXTERNAL_SYNC_TOKEN
+      - key: VITE_API_BASE_URL
+        fromSecret: VITE_API_BASE_URL
 
 # Notes:
 # - Set secrets in Render dashboard or via `render secrets set DATABASE_URL "..."` before deploy.

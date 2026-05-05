@@ -15,11 +15,14 @@ import logging
 import os
 import sys
 from typing import Literal
+from urllib.parse import parse_qsl, urlparse
 
 from dotenv import load_dotenv
 
-# Carregar .env antes de qualquer leitura de ambiente.
-load_dotenv()
+# Em produção, confiar apenas nas variáveis injetadas pelo orquestrador.
+BOOT_ENV = os.getenv("ENV", "").lower().strip()
+if BOOT_ENV != "production":
+    load_dotenv()
 
 # Configurar logging ANTES de tudo
 logging.basicConfig(
@@ -78,6 +81,16 @@ class ConfigValidator:
             return None
 
         database_url = database_url.strip()
+        lower_url = database_url.lower()
+
+        parsed = urlparse(database_url)
+        query_params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+
+        # Detectar parâmetros potencialmente sensíveis (channel_binding)
+        if "channel_binding" in query_params:
+            self.warnings.append(
+                "DATABASE_URL contém 'channel_binding'. Trate como opcional em produção; incompatibilidade de runtime com libpq/driver pode causar falha TLS."
+            )
 
         if self.is_prod:
             scheme = database_url.split("://", 1)[0].lower()
@@ -102,6 +115,17 @@ class ConfigValidator:
                     f"Formato: postgresql://user:password@host:port/database"
                 )
                 return None
+
+            sslmode = query_params.get("sslmode", "").lower().strip()
+            if not sslmode:
+                self.errors.append(
+                    "DATABASE_URL sem sslmode em PROD. Use ao menos sslmode=require (ou verify-full)."
+                )
+                return None
+            if sslmode not in {"require", "verify-full"}:
+                self.warnings.append(
+                    f"DATABASE_URL usa sslmode={sslmode!r}. Recomendado sslmode=require ou verify-full em produção."
+                )
 
         else:  # DEV
             if database_url.startswith("sqlite"):
@@ -156,12 +180,46 @@ class ConfigValidator:
                 )
                 return []
 
-            # Validar HTTPS
-            non_https = [o for o in cors_origins if not o.startswith("https://") and not o.startswith("http://localhost")]
+            invalid_format = []
+            for origin in cors_origins:
+                parsed = urlparse(origin)
+                if parsed.scheme not in {"https", "http"}:
+                    invalid_format.append(origin)
+                    continue
+                if not parsed.netloc:
+                    invalid_format.append(origin)
+                    continue
+                if parsed.path not in ("", "/") or parsed.params or parsed.query or parsed.fragment:
+                    invalid_format.append(origin)
+
+            if invalid_format:
+                self.errors.append(
+                    f"CORS_ORIGINS contém origem(ns) com formato inválido: {invalid_format}. "
+                    f"Use somente origem no formato scheme://host[:port]."
+                )
+                return []
+
+            # Em produção, bloquear http:// explicitamente.
+            non_https = [o for o in cors_origins if not o.startswith("https://")]
             if non_https:
-                self.warnings.append(
+                self.errors.append(
                     f"CORS_ORIGINS contém URLs sem HTTPS em PROD: {non_https}. "
-                    f"Recomendado usar HTTPS."
+                    f"Use somente https://."
+                )
+                return []
+
+            # Alertas de inconsistência entre domínios/portas.
+            parsed_origins = [urlparse(o) for o in cors_origins]
+            hosts = [p.hostname for p in parsed_origins if p.hostname]
+            ports = [p.port for p in parsed_origins if p.port is not None]
+
+            if len(set(hosts)) > 1:
+                self.warnings.append(
+                    f"CORS_ORIGINS contém múltiplos hosts em PROD: {sorted(set(hosts))}. Verifique consistência de domínio."
+                )
+            if ports:
+                self.warnings.append(
+                    f"CORS_ORIGINS contém portas explícitas em PROD: {sorted(set(ports))}. Verifique exposição necessária."
                 )
 
         else:  # DEV
@@ -221,6 +279,33 @@ class ConfigValidator:
 
         return allow_seed
 
+    def validate_frontend_api_base_url(self) -> str | None:
+        """
+        Valida `VITE_API_BASE_URL` em ambientes PROD.
+        - Em PROD: opcional para backend, mas quando definido não deve apontar para localhost.
+        - Em DEV: aceitável apontar para localhost; se ausente, emite warning.
+        """
+        vite_url = os.getenv("VITE_API_BASE_URL", "").strip()
+
+        if self.is_prod:
+            if not vite_url:
+                self.warnings.append(
+                    "VITE_API_BASE_URL não configurado em PROD. Backend pode iniciar sem este valor, mas frontend build-time deve definir URL pública da API."
+                )
+                return None
+            if "localhost" in vite_url or "127.0.0.1" in vite_url:
+                self.warnings.append(
+                    "VITE_API_BASE_URL aponta para localhost em PROD. Use a URL pública do backend no build do frontend."
+                )
+                return vite_url
+        else:
+            if not vite_url:
+                self.warnings.append(
+                    "VITE_API_BASE_URL não configurado. Em DEV, pode apontar para localhost."
+                )
+
+        return vite_url if vite_url else None
+
     def validate(self) -> dict:
         """Executa todas as validações"""
         logger.info(f"[CONFIG] Validando configuração para ENV={self.env}...")
@@ -231,6 +316,7 @@ class ConfigValidator:
             "database_url": self.validate_database_url(),
             "cors_origins": self.validate_cors_origins(),
             "external_sync_token": self.validate_external_sync_token(),
+            "vite_api_base_url": self.validate_frontend_api_base_url(),
             "allow_seed": self.validate_allow_seed(),
         }
 
@@ -250,6 +336,10 @@ class ConfigValidator:
                 f"Configuração inválida para {self.env}. "
                 f"Verifique variáveis de ambiente e tente novamente."
             )
+
+        db_host = urlparse(config["database_url"]).hostname if config.get("database_url") else "unknown"
+        cors_count = len(config.get("cors_origins") or [])
+        logger.info("[STARTUP] ENV=%s CORS_COUNT=%s DB_HOST=%s", self.env, cors_count, db_host)
 
         logger.info("[CONFIG] ✅ Configuração validada com sucesso!")
         return config
@@ -284,6 +374,7 @@ try:
     CORS_ORIGINS = GLOBAL_CONFIG["cors_origins"]
     EXTERNAL_SYNC_TOKEN = GLOBAL_CONFIG["external_sync_token"]
     ALLOW_SEED = GLOBAL_CONFIG["allow_seed"]
+    VITE_API_BASE_URL = GLOBAL_CONFIG.get("vite_api_base_url")
 
 except ConfigError:
     # Se falhar aqui, o módulo não pode ser importado

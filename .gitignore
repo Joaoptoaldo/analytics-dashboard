@@ -1,5 +1,8 @@
 # Environment variables
+env
 .env
+.env*.local
+env.local
 .env*.local
 
 # Node / frontend
@@ -19,6 +22,7 @@ log
 .venv/
 venv/
 backend/.venv/
+backend/venv/
 
 # Python bytecode and caches
 __pycache__/
@@ -26,16 +30,14 @@ __pycache__/
 *$py.class
 backend/__pycache__/
 backend/*.pyc
+.pytest_cache/
+.mypy_cache/
 
 # Test and coverage
 .pytest_cache/
 coverage.xml
 htmlcov/
 .tox/
-
-# Environments and secrets
-.env
-.env*.local
 
 # Database files (local development)
 backend.db

@@ -85,46 +85,46 @@
   },
   "key_validations": {
     "backend_ready": {
-      "status": "✅ YES",
+      "status": "YES",
       "metrics": {
         "endpoints_working": "10/10",
         "no_500_errors": "20/20 requests",
         "security_headers": "4/4 present",
-        "cors_working": "✅ YES",
-        "data_consistency": "✅ YES"
+        "cors_working": "YES",
+        "data_consistency": "YES"
       }
     },
     "production_strictness": {
-      "status": "✅ YES",
+      "status": "YES",
       "enforcement": {
-        "sqlite_blocked": "✅ YES",
-        "token_required": "✅ YES",
-        "cors_validated": "✅ YES",
-        "database_url_validated": "✅ YES"
+        "sqlite_blocked": "YES",
+        "token_required": "YES",
+        "cors_validated": "YES",
+        "database_url_validated": "YES"
       }
     },
     "security": {
-      "status": "✅ YES",
+      "status": "YES",
       "measures": {
-        "cors_headers": "✅ Implemented",
-        "security_headers": "✅ Implemented",
-        "internal_endpoint_protected": "✅ Token required",
-        "no_secrets_in_logs": "✅ Verified"
+        "cors_headers": "Implemented",
+        "security_headers": "Implemented",
+        "internal_endpoint_protected": "Token required",
+        "no_secrets_in_logs": "Verified"
       }
     },
     "performance": {
-      "status": "✅ YES",
+      "status": "YES",
       "metrics": {
         "avg_response_time": "~150ms",
-        "no_timeouts": "✅ YES",
-        "no_memory_leaks": "✅ No growth detected",
-        "concurrent_requests": "✅ Handled"
+        "no_timeouts": "YES",
+        "no_memory_leaks": "YES",
+        "concurrent_requests": "Handled"
       }
     }
   },
   "deployment_platforms_readiness": {
     "fly_io": {
-      "status": "🟢 READY",
+      "status": "READY",
       "notes": [
         "Docker uses dynamic PORT variable",
         "Health endpoints implemented",
@@ -132,7 +132,7 @@
       ]
     },
     "render": {
-      "status": "🟢 READY",
+      "status": "READY",
       "notes": [
         "Dockerfile respects PORT env var",
         "Health check path configured",
@@ -141,7 +141,7 @@
     }
   },
   "final_verdict": {
-    "status": "🟢 SAFE TO DEPLOY",
+    "status": "SAFE TO DEPLOY",
     "confidence": "95%+",
     "rationale": [
       "All 24 functional tests passed",
@@ -151,7 +151,7 @@
       "Production mode strictness enforced",
       "No critical issues found"
     ],
-    "risk_level": "🟢 LOW"
+    "risk_level": "LOW"
   },
   "recommendations": {
     "before_deployment": [

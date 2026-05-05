@@ -1,15 +1,19 @@
 from datetime import datetime, timedelta
+from time import perf_counter
 
 import logging
+import os
 from typing import Any
-from sqlalchemy import distinct, func, or_
+from sqlalchemy import distinct, func, inspect, or_, text
+from sqlalchemy.exc import SQLAlchemyError
 
 # IMPORTANTE: Importar config validado PRIMEIRO
 # Isso vai falhar se variáveis de ambiente estiverem inválidas (fail-fast)
-from backend.config import CORS_ORIGINS, EXTERNAL_SYNC_TOKEN, IS_PRODUCTION
+from backend.config import CORS_ORIGINS, EXTERNAL_SYNC_TOKEN, IS_PRODUCTION, IS_DEVELOPMENT
 
 from backend.data import CATEGORIES, STATUSES
 from backend.db import SessionLocal, init_db
+from backend.db import engine
 from backend.metrics_engine import get_total_revenue
 from backend.models.product import Product
 from backend.routers.analytics import router as analytics_router
@@ -17,6 +21,7 @@ from backend.routers.external import router as external_router
 from backend.routers.external_sync import router as external_sync_router
 from backend.routers.products import router as products_router
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.requests import Request
@@ -30,57 +35,24 @@ app.include_router(analytics_router, prefix="/api")
 # Evita exposição direta para frontends sem o token apropriado
 app.include_router(external_sync_router, prefix="/internal")
 
+# controle de execução de init_db em desenvolvimento via variável de ambiente (fail-safe, não roda init_db em produção mesmo que variável mal configurada)
+RUN_INIT_DB = os.getenv("RUN_INIT_DB", "false").lower() in ("1", "true", "yes")
+if IS_DEVELOPMENT and RUN_INIT_DB:
+    init_db()
 
-init_db()
+# Configuração de CORS (Cross-Origin Resource Sharing)
+cors_origins = CORS_ORIGINS or []
 
-
-class CustomCORSMiddleware(BaseHTTPMiddleware):
-    """Middleware customizado para CORS que adiciona headers manualmente"""
-    def __init__(self, app, allow_origins=None, allow_credentials=False):
-        super().__init__(app)
-        self.allow_origins = allow_origins or ["*"]
-        self.allow_credentials = allow_credentials
-        logging.info(f"[CORS] CustomCORSMiddleware initializado com allow_origins={self.allow_origins}, allow_credentials={self.allow_credentials}")
-    
-    async def dispatch(self, request: Request, call_next) -> Response:
-        # Handle preflight requests (OPTIONS)
-        if request.method == "OPTIONS":
-            origin = request.headers.get("origin", "*")
-            if "*" in self.allow_origins or origin in self.allow_origins:
-                return Response(
-                    headers={
-                        "Access-Control-Allow-Origin": origin,
-                        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-                        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, x-internal-token",
-                        "Access-Control-Allow-Credentials": "true" if self.allow_credentials else "false",
-                        "Access-Control-Max-Age": "3600",
-                    }
-                )
-        
-        # Process request
-        response = await call_next(request)
-        
-        # Add CORS headers to response
-        origin = request.headers.get("origin", "*")
-        if "*" in self.allow_origins or origin in self.allow_origins:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, x-internal-token"
-            if self.allow_credentials:
-                response.headers["Access-Control-Allow-Credentials"] = "true"
-        
-        return response
-
-
-cors_origins = CORS_ORIGINS
-# Quando origins=['*'], credentials DEVE ser False (padrão CORS)
-allow_credentials = False  # Hardcoded for dev
+allow_credentials = False
 logging.info(f"[CORS] Loaded CORS_ORIGINS={cors_origins}, allow_credentials={allow_credentials}")
 
 app.add_middleware(
-    CustomCORSMiddleware,
+    CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=allow_credentials,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "x-internal-token"],
+    max_age=3600,
 )
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -144,18 +116,70 @@ def health_check():
 
 @app.get("/readiness")
 def readiness_check():
-    """Readiness probe: service is ready to accept traffic (DB connection verified)"""
-    try:
-        db = SessionLocal()
-        # Simple query to verify DB connection
-        db.query(Product).limit(1).all()
-        db.close()
-        return {"status": "ready", "database": "ok"}
-    except Exception as e:
-        logging.error(f"[READINESS] Database connection failed: {e.__class__.__name__}", exc_info=False)
+    """Readiness probe: service is ready to accept traffic (DB + schema verified)"""
+    started_at = perf_counter()
+
+    # 1) Connection + query check with bounded retries for transient failures.
+    query_error_name = None
+    for attempt in range(1, 4):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            query_error_name = None
+            break
+        except Exception as exc:
+            query_error_name = exc.__class__.__name__
+            logging.error(
+                "[READINESS] DB query failed (attempt %s/3): %s",
+                attempt,
+                query_error_name,
+                exc_info=False,
+            )
+
+    latency_ms = round((perf_counter() - started_at) * 1000, 2)
+
+    if query_error_name is not None:
         return JSONResponse(
             status_code=503,
-            content={"status": "not_ready", "database": "failed", "reason": "db_connection_error"}
+            content={
+                "status": "not_ready",
+                "database": "failed",
+                "schema": "failed",
+                "latency_ms": latency_ms,
+                "reason": "db_query_error",
+            },
+        )
+
+    # 2) Schema check on a fresh short-lived connection.
+    try:
+        with engine.connect() as conn:
+            has_products_table = inspect(conn).has_table("products")
+
+        if not has_products_table:
+            logging.error("[READINESS] Schema check failed: missing table 'products'", exc_info=False)
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "not_ready",
+                    "database": "ok",
+                    "schema": "failed",
+                    "latency_ms": latency_ms,
+                    "reason": "missing_products_table",
+                },
+            )
+
+        return {"status": "ready", "database": "ok", "schema": "ok", "latency_ms": latency_ms}
+    except Exception as e:
+        logging.error(f"[READINESS] Schema check failed: {e.__class__.__name__}", exc_info=False)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "database": "ok",
+                "schema": "failed",
+                "latency_ms": latency_ms,
+                "reason": "schema_check_error",
+            },
         )
 
 
@@ -419,7 +443,41 @@ async def get_overview(
         logging.warning("[DEPRECATED] region filter ignored")
     db = SessionLocal()
     try:
-        return _build_overview_db(db, period, category, status, search)
+        payload = _build_overview_db(db, period, category, status, search)
+        if isinstance(payload, dict):
+            if payload.get("state") == "no_data":
+                payload["reason"] = payload.get("reason") or "no_data"
+            elif payload.get("state") == "error":
+                payload["reason"] = "db_error"
+        return payload
+    except SQLAlchemyError as exc:
+        logging.error(f"[OVERVIEW] database failure: {exc.__class__.__name__}", exc_info=False)
+        return {
+            "total_revenue": None,
+            "total_orders": None,
+            "total_customers": None,
+            "conversion_rate": None,
+            "revenue_change": None,
+            "orders_change": None,
+            "customers_change": None,
+            "conversion_change": None,
+            "state": "error",
+            "reason": "db_error",
+        }
+    except Exception as exc:
+        logging.error(f"[OVERVIEW] unexpected failure: {exc.__class__.__name__}", exc_info=False)
+        return {
+            "total_revenue": None,
+            "total_orders": None,
+            "total_customers": None,
+            "conversion_rate": None,
+            "revenue_change": None,
+            "orders_change": None,
+            "customers_change": None,
+            "conversion_change": None,
+            "state": "error",
+            "reason": "unexpected",
+        }
     finally:
         db.close()
 

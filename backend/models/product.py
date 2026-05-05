@@ -22,11 +22,26 @@ class Product(Base):
         Returns:
             _type_: _description_: Dicionario com `id`, `client`, `category`, `revenue`, `status` e `date` (`YYYY-MM-DD` ou `None`).
         """
+        # defensive conversions: external_id may be malformed (string 'NaN')
+        try:
+            ext_id = int(self.external_id) if self.external_id is not None else None
+        except Exception:
+            ext_id = None
+
+        # revenue may contain NaN/inf coming from external data; normalize to 0.0
+        try:
+            rev = float(self.revenue) if self.revenue is not None else 0.0
+            from math import isfinite
+            if not isfinite(rev):
+                rev = 0.0
+        except Exception:
+            rev = 0.0
+
         return {
-            "id": self.external_id or self.id,
+            "id": ext_id if ext_id is not None else (int(self.id) if self.id is not None else None),
             "client": self.client,
             "category": self.category,
-            "revenue": float(self.revenue) if self.revenue is not None else 0.0,
+            "revenue": rev,
             "status": self.status,
             "date": self.date.strftime("%Y-%m-%d") if self.date else None,
         }

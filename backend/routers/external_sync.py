@@ -1,5 +1,6 @@
 ﻿import os
 import time
+import hmac
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Request
@@ -47,7 +48,7 @@ def _enforce_sync_access(request: Request) -> None:
     provided_token = request.headers.get("x-internal-token", "").strip()
     
     # Fail-closed: no token provided or wrong token = 401
-    if not provided_token or provided_token != expected_token:
+    if not provided_token or not hmac.compare_digest(provided_token, expected_token):
         raise HTTPException(
             status_code=401, 
             detail="Invalid or missing sync token"
