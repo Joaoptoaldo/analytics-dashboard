@@ -1,6 +1,12 @@
+import sys
+from pathlib import Path
+from datetime import datetime, timedelta
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
 from backend.db import SessionLocal
 from backend.models.product import Product
-from datetime import datetime, timedelta
 
 THRESHOLD_YEARS = 2
 

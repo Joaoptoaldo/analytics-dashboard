@@ -1,3 +1,11 @@
+import sqlite3
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+DB_PATH = BASE_DIR / "backend.db"
 from backend.db import SessionLocal
 from backend.models.product import Product
 from sqlalchemy import func

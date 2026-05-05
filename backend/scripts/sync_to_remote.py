@@ -1,7 +1,13 @@
 import os
+import sys
+from pathlib import Path
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
 
 from backend.db import SessionLocal, Base
 from backend.models.product import Product

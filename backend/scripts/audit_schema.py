@@ -1,8 +1,12 @@
 """Audit script to inspect actual database schema vs models"""
 import sqlite3
+import sys
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent.parent.parent / "backend.db"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+DB_PATH = BASE_DIR / "backend.db"
 
 def inspect_db():
     """Inspect SQLite database schema"""

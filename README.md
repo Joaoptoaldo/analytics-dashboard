@@ -156,7 +156,7 @@ URLs locais:
 ## Documentacao e Scripts
 
 - Documentacao operacional: docs/
-  - docs/PRODUCTION_DEPLOYMENT.md
+  - docs/NEXT_STEPS_DEPLOY.md
   - docs/DEPLOY_CHECKLIST.md
   - docs/deploy-seguro.md
   - docs/runbook-rotacao-credenciais.md

@@ -78,7 +78,7 @@ MONTHLY AGGREGATION (GROUP BY MONTH(date), COUNT, SUM)
 │   orders_change: None                │ (period=all, no comparison period)  │
 │   state: "valid"                     │ (data loaded successfully)          │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ ✓ VERDICT: MATCH - API aggregation is correct                             │
+│  VERDICT: MATCH - API aggregation is correct                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -89,11 +89,11 @@ MONTHLY AGGREGATION (GROUP BY MONTH(date), COUNT, SUM)
 │ State: "valid"                                                             │
 │                                                                            │
 │ Sample (first 3 months):                                                  │
-│   2025-06: orders=1, revenue=0.0    ✓ MATCH                              │
-│   2025-10: orders=1, revenue=0.0    ✓ MATCH                              │
-│   2026-01: orders=29, revenue=29000 ✓ MATCH                              │
+│   2025-06: orders=1, revenue=0.0     MATCH                              │
+│   2025-10: orders=1, revenue=0.0     MATCH                              │
+│   2026-01: orders=29, revenue=29000  MATCH                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ ✓ VERDICT: MATCH - Monthly aggregation is correct                         │
+│  VERDICT: MATCH - Monthly aggregation is correct                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -103,13 +103,13 @@ MONTHLY AGGREGATION (GROUP BY MONTH(date), COUNT, SUM)
 │ Expected (from DB GROUP BY): 8 categories                                  │
 │                                                                            │
 │ Top 5 comparison:                                                          │
-│   API: groceries (15)  vs DB: 15 ✓                                        │
-│   API: B (10)          vs DB: 10 ✓                                        │
-│   API: A (10)          vs DB: 10 ✓                                        │
-│   API: C (9)           vs DB: 9  ✓                                        │
-│   API: furniture (5)   vs DB: 5  ✓                                        │
+│   API: groceries (15)  vs DB: 15                                         │
+│   API: B (10)          vs DB: 10                                         │
+│   API: A (10)          vs DB: 10                                         │
+│   API: C (9)           vs DB: 9                                          │
+│   API: furniture (5)   vs DB: 5                                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ ✓ VERDICT: MATCH - Distribution counts are correct                        │
+│  VERDICT: MATCH - Distribution counts are correct                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -119,13 +119,13 @@ MONTHLY AGGREGATION (GROUP BY MONTH(date), COUNT, SUM)
 │ Expected (from DB ORDER BY revenue DESC): same 10 in same order           │
 │                                                                            │
 │ Top 5 comparison:                                                          │
-│   API: Annibale Colombo Sofa (2499.99) vs DB: 2499.99 ✓                 │
-│   API: Annibale Colombo Bed (1899.99)  vs DB: 1899.99 ✓                 │
-│   API: client_1 (1000.00)               vs DB: 1000.00 ✓                 │
-│   API: client_0 (1000.00)               vs DB: 1000.00 ✓                 │
-│   API: client_2 (1000.00)               vs DB: 1000.00 ✓                 │
+│   API: Annibale Colombo Sofa (2499.99) vs DB: 2499.99                  │
+│   API: Annibale Colombo Bed (1899.99)  vs DB: 1899.99                  │
+│   API: client_1 (1000.00)               vs DB: 1000.00                  │
+│   API: client_0 (1000.00)               vs DB: 1000.00                  │
+│   API: client_2 (1000.00)               vs DB: 1000.00                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ ✓ VERDICT: MATCH - Top products ranking is correct                        │
+│  VERDICT: MATCH - Top products ranking is correct                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -138,19 +138,19 @@ MONTHLY AGGREGATION (GROUP BY MONTH(date), COUNT, SUM)
 │ Component                    │ Visual Display   │ Expected (API)           │
 ├──────────────────────────────┼──────────────────┼──────────────────────────┤
 │ Receita Total                │ $35.577,5       │ USD 35,577.50           │
-│                              │ ✓ MATCH         │ (formatting: pt-BR)     │
+│                              │  MATCH         │ (formatting: pt-BR)     │
 ├──────────────────────────────┼──────────────────┼──────────────────────────┤
 │ Total Pedidos                │ 62              │ 62                       │
-│                              │ ✓ MATCH         │                         │
+│                              │  MATCH         │                         │
 ├──────────────────────────────┼──────────────────┼──────────────────────────┤
 │ Clientes                     │ 36              │ 36                       │
-│                              │ ✓ MATCH         │                         │
+│                              │  MATCH         │                         │
 ├──────────────────────────────┼──────────────────┼──────────────────────────┤
 │ Conversão                    │ 16.13%          │ 16.13%                   │
-│                              │ ✓ MATCH         │                         │
+│                              │  MATCH         │                         │
 ├──────────────────────────────┼──────────────────┼──────────────────────────┤
 │ Change indicators            │ "sem comparação" │ revenue_change: None    │
-│                              │ ✓ CORRECT       │ (period=all context)    │
+│                              │  CORRECT       │ (period=all context)    │
 └──────────────────────────────┴──────────────────┴──────────────────────────┘
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -263,10 +263,10 @@ com precisão entre DB → API → Frontend.
 
 ## 5. LOOP DE VALIDAÇÃO (SEGUNDO CICLO - REVALIDAÇÃO)
 
-✓ Revalidei cada conclusão anterior com cálculo matemático
-✓ Nenhuma conclusão foi invalidada
-✓ Problemas #1, #2: realmente decorrem de dataset misto (seed + sync real)
-✓ Problemas #3, #4, #5: realmente decorrem de renderização/formatação
+ Revalidei cada conclusão anterior com cálculo matemático
+ Nenhuma conclusão foi invalidada
+ Problemas #1, #2: realmente decorrem de dataset misto (seed + sync real)
+ Problemas #3, #4, #5: realmente decorrem de renderização/formatação
 
 ═══════════════════════════════════════════════════════════════════════════════
 

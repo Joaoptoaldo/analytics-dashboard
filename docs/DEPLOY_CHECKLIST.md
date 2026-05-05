@@ -1,6 +1,6 @@
 # CHECKLIST DE DEPLOY PRÁTICO
 
-**Status:** 🟢 **PRONTO PARA DEPLOY**
+**Status:** **PRONTO PARA DEPLOY**
 
 ---
 
@@ -305,7 +305,7 @@ fly releases rollback
 **Documentação:**
 - [QA_FINAL_REPORT.md](QA_FINAL_REPORT.md) - Relatório completo
 - [QA_AUDIT_CONSOLIDADO.json](QA_AUDIT_CONSOLIDADO.json) - Dados estruturados
-- [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) - Deploy guide
+- [NEXT_STEPS_DEPLOY.md](NEXT_STEPS_DEPLOY.md) - Próximos passos de deploy
 
 **Scripts Úteis:**
 - `qa_test_fullstack.py` - Rodar testes QA
@@ -317,13 +317,13 @@ fly releases rollback
 
 | Role | Name | Date | Approval |
 |------|------|------|----------|
-| QA Lead + SRE | Agent | 2026-05-05 | ✅ APPROVED |
+| QA Lead + SRE | Agent | 2026-05-05 | APPROVED |
 | Backend Dev | (You) | _ | _ |
 | DevOps/Infra | (You) | _ | _ |
 
 ---
 
-**DEPLOYMENT WINDOW:** 🟢 OPEN
+**DEPLOYMENT WINDOW:**  OPEN
 
 **NEXT REVIEW:** 24h post-deployment (monitoring check-in)
 
