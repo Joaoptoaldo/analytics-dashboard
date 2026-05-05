@@ -3,6 +3,7 @@ from typing import Any
 
 CATEGORIES = ["groceries", "home-decoration", "kitchen-accessories", "mens-watches", "beauty"]
 STATUSES = ["Completed", "Processing", "Shipped", "Pending"]
+# lista 30 clientes para geração de dados realistas
 CLIENTS = [ 
     "Alfa Tech",
     "Beta Commerce",

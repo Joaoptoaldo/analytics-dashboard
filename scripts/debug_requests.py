@@ -5,7 +5,6 @@ import urllib.request
 import urllib.error
 import json
 
-# Allow overriding the target base URL via environment for proxy testing
 BASE = os.getenv("BASE_URL", "http://localhost:8000")
 ENDPOINTS = [
     "/api/overview?period=all&category=all&status=all&search=",

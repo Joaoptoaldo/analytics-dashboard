@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-AUDITORIA TÉCNICA RIGOROSA DO DASHBOARD
+AUDITORIA TÉCNICA DO DASHBOARD
 Data: 2026-05-04
 Escopo: Validação cruzada visualização (screenshot) vs Backend (API + DB)
 ═══════════════════════════════════════════════════════════════════════════════
@@ -157,14 +157,14 @@ MONTHLY AGGREGATION (GROUP BY MONTH(date), COUNT, SUM)
 
 ## 4. IDENTIFICAÇÃO DE INCONSISTÊNCIAS E PROBLEMAS (Terceiro Loop)
 
-### 🔴 CRÍTICO - Quebra de Verdade
+### CRÍTICO - Quebra de Verdade
 
 Nenhum problema crítico encontrado. Todos os valores numéricos coincidem 
 com precisão entre DB → API → Frontend.
 
 ═══════════════════════════════════════════════════════════════════════════════
 
-### 🟠 SEMÂNTICO - Dados corretos, representação enganosa
+### SEMÂNTICO - Dados corretos, representação enganosa
 
 #### PROBLEMA #1: Dados Sintéticos Misturados com Dados Reais
 **Componente**: Top Products (gráfico de barra + tabela)
@@ -197,7 +197,7 @@ com precisão entre DB → API → Frontend.
 
 ---
 
-### 🟡 VISUAL - Pode induzir erro, mas cálculo está correto
+### VISUAL - Pode induzir erro, mas cálculo está correto
 
 #### PROBLEMA #3: Granularidade Enganosa do Gráfico Temporal
 **Componente**: "Vendas Temporais - série diária" (LineChart)
@@ -413,23 +413,23 @@ com precisão entre DB → API → Frontend.
 
 ## 8. VEREDITO FINAL
 
-### O dashboard é: **PARCIALMENTE CONFIÁVEL** ⚠️
+### O dashboard é: **PARCIALMENTE CONFIÁVEL** 
 
 **Justificativa**:
 
-✓ CONFIÁVEL (Aritmética):
+ CONFIÁVEL (Aritmética):
   - Todos os totais (receita, pedidos, clientes) estão corretos
   - Agregações (soma, contagem, percentuais) estão matematicamente corretas
   - Queries backend retornam dados sem distorção
   - Valores numéricos exibidos coincidem com banco de dados com precisão
 
-❌ NÃO CONFIÁVEL (Semântica):
+ NÃO CONFIÁVEL (Semântica):
   - Top Products mistura dados reais (Annibale Colombo) com placeholders (client_N)
   - Categorias incluem A, B, C (placeholders) junto com categorias reais
   - Usuário não consegue distinguir dados de teste de dados de produção
   - Rótulo "série diária" enganoso - dados são mensais
 
-🟡 VISUALMENTE ENGANOSO:
+ VISUALMENTE ENGANOSO:
   - Pie chart com percentuais arredondados pode parecer incompleto
   - Eixo temporal truncado não mostra verdadeiro range de dados
   - Falta clareza visual sobre origem dos dados

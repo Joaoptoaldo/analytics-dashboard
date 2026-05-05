@@ -24,6 +24,8 @@ import subprocess
 import json
 from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 # Cores para output
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -59,15 +61,15 @@ def run_test(name: str, env_vars: dict, should_fail: bool = False):
 import sys
 try:
     from backend.config import GLOBAL_CONFIG
-    print("✅ Config validation PASSED")
+    print("Config validation PASSED")
     sys.exit(0)
 except SystemExit as e:
     if e.code == 1:
-        print("❌ Config validation FAILED (exit 1)")
+        print("Config validation FAILED (exit 1)")
         sys.exit(1)
     raise
 except Exception as e:
-    print(f"❌ Unexpected error: {e}")
+    print(f"Unexpected error: {e}")
     sys.exit(2)
 '''
 
@@ -76,7 +78,7 @@ except Exception as e:
         env=test_env,
         capture_output=True,
         text=True,
-        cwd=str(Path(__file__).parent.parent)
+        cwd=str(BASE_DIR)
     )
 
     # Analisar resultado
@@ -84,10 +86,10 @@ except Exception as e:
     expected_fail = should_fail and result.returncode != 0
 
     if success or expected_fail:
-        status = f"{GREEN}✅ PASSED{RESET}"
+        status = f"{GREEN} PASSED{RESET}"
         expected_str = "(passou conforme esperado)" if success else "(falhou conforme esperado)"
     else:
-        status = f"{RED}❌ FAILED{RESET}"
+        status = f"{RED} FAILED{RESET}"
         expected_str = f"(esperado {'falhar' if should_fail else 'passar'})"
 
     print(f"  Status: {status} {expected_str}")

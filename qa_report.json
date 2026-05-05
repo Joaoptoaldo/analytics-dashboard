@@ -1,0 +1,18 @@
+{
+  "total_tests": 24,
+  "passed": 23,
+  "failed": 1,
+  "warnings": 0,
+  "duration_seconds": 2.348542,
+  "verdict": "NOT READY",
+  "failed_tests": [
+    {
+      "name": "Internal Endpoint Protected",
+      "passed": false,
+      "message": "Returns 500 (expected 401) without token",
+      "severity": "error",
+      "timestamp": "2026-05-05T14:46:06.776836"
+    }
+  ],
+  "warnings_list": []
+}

@@ -83,6 +83,21 @@ app.add_middleware(
     allow_credentials=allow_credentials,
 )
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 
 # Global error handlers (fail-safe, don't expose internals)
 from fastapi import HTTPException

@@ -1,10 +1,10 @@
-# 🚀 Production Deployment Guide
+# Production Deployment Guide
 
-Este documento descreve os passos obrigatórios para fazer deploy do Dashboard Analytics em produção (Fly.io ou similar).
+Este documento descreve os passos obrigatórios para fazer deploy do Dashboard Analytics em produção (Fly.io, Render ou similar).
 
 ---
 
-## ⚠️ CHECKLIST PRÉ-DEPLOY (OBRIGATÓRIO)
+## CHECKLIST PRÉ-DEPLOY (OBRIGATÓRIO)
 
 ### 1. Backend Configuration (fly.toml)
 
@@ -21,9 +21,9 @@ Este documento descreve os passos obrigatórios para fazer deploy do Dashboard A
 ```
 
 **Validar:**
-- ✅ `DATABASE_URL` aponta para PostgreSQL (NÃO SQLite)
-- ✅ `CORS_ORIGINS` inclui domínio final
-- ✅ `EXTERNAL_SYNC_TOKEN` é único e seguro (min 32 caracteres)
+- `DATABASE_URL` aponta para PostgreSQL (NÃO SQLite)
+- `CORS_ORIGINS` inclui domínio final
+- `EXTERNAL_SYNC_TOKEN` é único e seguro (min 32 caracteres)
 
 ### 2. Frontend Configuration (.env.production)
 
@@ -34,8 +34,8 @@ VITE_EXTERNAL_SYNC_TOKEN=mesmo-token-do-backend-backend
 ```
 
 **Validar:**
-- ✅ `VITE_API_BASE_URL` aponta para domínio final
-- ✅ Token sincronizado com backend
+- `VITE_API_BASE_URL` aponta para domínio final
+- `VITE_EXTERNAL_SYNC_TOKEN` sincronizado com backend
 
 ### 3. Database Setup
 
@@ -81,7 +81,7 @@ Backend expõe dois endpoints para monitoring:
 
 ---
 
-## 📋 DEPLOY STEPS
+## DEPLOY STEPS
 
 ### Step 1: Build Frontend
 
@@ -127,18 +127,18 @@ curl https://dashboard.fly.dev/
 
 ---
 
-## 🔒 Security Checklist
+## Security Checklist
 
-- ✅ `EXTERNAL_SYNC_TOKEN` configurado (não vazio)
-- ✅ `CORS_ORIGINS` não contém `*` (whitelist explícita)
-- ✅ `DATABASE_URL` usa PostgreSQL (não SQLite ephemeral)
-- ✅ Logs sem stack trace (logging.error(..., exc_info=False))
-- ✅ Endpoints internos protegidos por token (`/internal/**`)
-- ✅ HTTPS forçado (fly.io faz redirect automático)
+- `EXTERNAL_SYNC_TOKEN` configurado (não vazio)
+- `CORS_ORIGINS` não contém `*` (whitelist explícita)
+- `DATABASE_URL` usa PostgreSQL (não SQLite ephemeral)
+- Logs sem stack trace (logging.error(..., exc_info=False))
+- Endpoints internos protegidos por token (`/internal/**`)
+- HTTPS forçado (fly.io faz redirect automático)
 
 ---
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Frontend recebe CORS error
 
@@ -187,7 +187,7 @@ DATABASE_URL="postgresql://user:pass@db.internal/dashboard?sslmode=require"
 
 ---
 
-## 📊 Monitoring
+## Monitoring
 
 ### Essential Metrics
 
@@ -215,7 +215,7 @@ fly logs -f | grep "\[ERROR\]\|\[READINESS\]"
 
 ---
 
-## 🔄 Rollback Procedure
+## Rollback Procedure
 
 Se deploy quebrar:
 
@@ -232,15 +232,15 @@ curl https://dashboard.fly.dev/health
 
 ---
 
-## 📝 Post-Deploy Verification
+## Post-Deploy Verification
 
-✅ Health check: `curl https://dashboard.fly.dev/health`  
-✅ Readiness: `curl https://dashboard.fly.dev/readiness`  
-✅ API endpoint: `curl https://dashboard.fly.dev/api/overview`  
-✅ Frontend loads: `curl https://dashboard.fly.dev/ | grep "<div id=\"root\""  
-✅ Logs no errors: `fly logs | grep ERROR`
+- Health check: `curl https://dashboard.fly.dev/health`  
+- Readiness: `curl https://dashboard.fly.dev/readiness`  
+- API endpoint: `curl https://dashboard.fly.dev/api/overview`  
+- Frontend loads: `curl https://dashboard.fly.dev/ | grep "<div id=\"root\""  
+- Logs no errors: `fly logs | grep ERROR`
 
 ---
 
 **Last Updated:** 4 de maio de 2026  
-**Status:** ✅ PRODUCTION READY (com configuração correta)
+**Status:** PRODUCTION READY (com configuração correta)

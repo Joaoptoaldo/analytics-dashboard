@@ -2,9 +2,8 @@
 
 Voce esta me ajudando a construir o **Dashboard de Analise**, um sistema full stack com foco em visualizacao de dados, KPIs, filtros, tabelas e graficos com aparencia de produto SaaS.
 
-O projeto ja possui um **MVP funcional** e o objetivo agora e evoluir a base atual com mais consistencia arquitetural, melhor documentacao, backend mais robusto e experiencia mais proxima de producao.
+O projeto ja possui um MVP funcional, mas o objetivo agora e evoluir a base atual com mais consistencia arquitetural, melhor documentacao, backend mais robusto e experiencia mais proxima de producao.
 
----
 
 # Estado Real do Repositorio
 
@@ -140,6 +139,19 @@ Variaveis obrigatorias para setup:
 * `VITE_CORS_ORIGINS`
 * `VITE_DATABASE_URL`
 * `VITE_ALLOW_SEED`
+* `VITE_ENV`
+* `VITE_EXTERNAL_SYNC_TOKEN`
+* `VITE_EXTERNAL_SYNC_MIN_INTERVAL_SECONDS`
+* `VITE_FRONTEND_PORT`
+* `VITE_BACKEND_PORT`
+* `VITE_USE_MOCKS`
+* `VITE_LOG_LEVEL`
+* `VITE_ENABLE_ANALYTICS`
+* `VITE_ENABLE_ERROR_TRACKING`
+* `VITE_ENABLE_PERFORMANCE_MONITORING`
+* `VITE_SENTRY_DSN`
+* `VITE_SENTRY_ENVIRONMENT`
+* `VITE_SENTRY_RELEASE`
 
 ---
 

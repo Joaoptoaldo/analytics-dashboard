@@ -1,17 +1,17 @@
 # RELATÓRIO DE PRODUÇÃO — Dashboard de Análise
 
 **Data:** 3 de maio de 2026  
-**Status:** ✅ **PRONTO PARA DEPLOY**
+**Status:**  **PRONTO PARA DEPLOY**
 
 ---
 
-## 🎯 OBJETIVO ALCANÇADO
+## OBJETIVO ALCANÇADO
 
 O projeto foi transformado de um estado com **falhas críticas** para um **estado pronto para produção com segurança validada**.
 
 ---
 
-## ✅ CHECKLIST DE VALIDAÇÃO
+## CHECKLIST DE VALIDAÇÃO
 
 ### Frontend (React + Vite + TypeScript)
 - [x] Variáveis de ambiente não-hardcoded
@@ -58,44 +58,44 @@ O projeto foi transformado de um estado com **falhas críticas** para um **estad
 
 ---
 
-## 🔧 MUDANÇAS IMPLEMENTADAS (Iterativas)
+## MUDANÇAS IMPLEMENTADAS (Iterativas)
 
 ### Etapa 1: Frontend ↔ API
 
 | Problema | Solução | Status |
 |----------|---------|--------|
-| Hardcoding de `localhost:8000` em app/page.tsx | Remover refs, deixar genérico | ✅ Resolvido |
-| Frontend não enviava token para sync | Criar `fetchSyncWithToken()` + VITE_EXTERNAL_SYNC_TOKEN | ✅ Resolvido |
-| Variável de ambiente não tipada no Vite | Adicionar a vite-env.d.ts | ✅ Resolvido |
+| Hardcoding de `localhost:8000` em app/page.tsx | Remover refs, deixar genérico | Resolvido |
+| Frontend não enviava token para sync | Criar `fetchSyncWithToken()` + VITE_EXTERNAL_SYNC_TOKEN | Resolvido |
+| Variável de ambiente não tipada no Vite | Adicionar a vite-env.d.ts | Resolvido |
 
 ### Etapa 2: Backend
 
 | Problema | Solução | Status |
 |----------|---------|--------|
-| `/api/sales` quebrando (SQLAlchemy) | Corrigir construção da query | ✅ Resolvido |
-| Marketstack usando HTTP | Default para HTTPS | ✅ Resolvido |
-| Rota de sync exposta publicamente | Mover para /internal | ✅ Resolvido |
-| print() statements em services | Usar logging module | ✅ Resolvido |
+| `/api/sales` quebrando (SQLAlchemy) | Corrigir construção da query | Resolvido |
+| Marketstack usando HTTP | Default para HTTPS | Resolvido |
+| Rota de sync exposta publicamente | Mover para /internal | Resolvido |
+| print() statements em services | Usar logging module | Resolvido |
 
 ### Etapa 3: Docker & Segurança
 
 | Problema | Solução | Status |
 |----------|---------|--------|
-| Dockerfile copia monorepo inteiro | Copiar apenas backend/ | ✅ Resolvido |
-| Sem .dockerignore | Criar com sensibles | ✅ Resolvido |
-| Usuário root no container | Adicionar usuário não-root | ✅ Resolvido |
+| Dockerfile copia monorepo inteiro | Copiar apenas backend/ | Resolvido |
+| Sem .dockerignore | Criar com sensibles | Resolvido |
+| Usuário root no container | Adicionar usuário não-root | Resolvido |
 
 ### Etapa 4: Limpeza & Testes
 
 | Problema | Solução | Status |
 |----------|---------|--------|
-| pip_audit JSONs versionados | git rm --cached + .gitignore | ✅ Resolvido |
-| backend.db no git | Remover e .gitignore | ✅ Resolvido |
-| Falta de testes de integração | Adicionar 18 testes | ✅ Resolvido |
+| pip_audit JSONs versionados | git rm --cached + .gitignore | Resolvido |
+| backend.db no git | Remover e .gitignore | Resolvido |
+| Falta de testes de integração | Adicionar 18 testes | Resolvido |
 
 ---
 
-## 📊 RESULTADOS
+## RESULTADOS
 
 ### Testes
 ```
@@ -120,7 +120,7 @@ Backend:   ✓ pytest: all tests pass
 
 ---
 
-## 🚀 COMO FAZER DEPLOY
+## COMO FAZER DEPLOY
 
 ### Backend (Render, Railway, ou similar)
 
@@ -168,7 +168,7 @@ VITE_EXTERNAL_SYNC_TOKEN=your-secure-token-here
 
 ---
 
-## 🔒 SEGURANÇA EM PRODUÇÃO
+## SEGURANÇA EM PRODUÇÃO
 
 ### Checklist
 - [ ] DATABASE_URL aponta para PostgreSQL (não SQLite)
@@ -189,7 +189,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 ---
 
-## 📝 VARIÁVEIS DE AMBIENTE
+## VARIÁVEIS DE AMBIENTE
 
 ### Backend (sem prefixo)
 | Variável | Exemplo | Obrigatória? | Notas |
@@ -208,7 +208,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 ---
 
-## 🎯 PRÓXIMAS MELHORIAS (Não bloqueantes)
+## PRÓXIMAS MELHORIAS (Não bloqueantes)
 
 - [ ] Adicionar CI/CD (GitHub Actions: lint + test + build)
 - [ ] Aumentar cobertura de testes (backend: +10%, frontend: +20%)
@@ -221,7 +221,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 ---
 
-## 📌 COMMITS PRINCIPAIS
+## COMMITS PRINCIPAIS
 
 ```
 bc8fd5c - fix: Secure API integration, token auth, and repository cleanup
@@ -230,12 +230,12 @@ eb6332d - test: Add end-to-end tests for frontend-backend integration
 
 ---
 
-## ✨ CONCLUSÃO
+## CONCLUSÃO
 
-✅ **Pronto para GitHub:** Sim  
-✅ **Pronto para Deploy:** Sim  
-✅ **Sem erros silenciosos:** Sim  
-✅ **Integração confiável F↔B:** Sim  
-✅ **Configuração previsível:** Sim  
+- **Pronto para GitHub:** Sim  
+- **Pronto para Deploy:** Sim  
+- **Sem erros silenciosos:** Sim  
+- **Integração confiável F↔B:** Sim  
+- **Configuração previsível:** Sim  
 
 **Próximo passo:** Fazer push para main/production e criar PR.

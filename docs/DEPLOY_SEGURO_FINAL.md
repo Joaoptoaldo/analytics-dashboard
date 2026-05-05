@@ -1,10 +1,10 @@
 # DEPLOY SEGURO (PRODUCTION-GRADE) — IMPLEMENTAÇÃO CONCLUÍDA
 
-## Status Geral: 🟢 PRONTO PARA PRODUÇÃO
+## Status Geral: PRONTO PARA PRODUÇÃO
 
 ### O Que Foi Implementado
 
-#### 1. ✅ Backend Configuration Validation Module (`backend/config.py`)
+#### 1. Backend Configuration Validation Module (`backend/config.py`)
 
 **Objetivo:** Eliminar todos os fallback silenciosos que causam desastres em produção.
 
@@ -18,18 +18,18 @@
 
 **Resultado:** Todos os 9 cenários de teste passando:
 ```
-✅ PROD: DATABASE_URL faltando → FALHA (conforme esperado)
-✅ PROD: CORS_ORIGINS faltando → FALHA (conforme esperado)
-✅ PROD: DATABASE_URL=SQLite → FALHA (conforme esperado)
-✅ PROD: CORS_ORIGINS="*" → FALHA (conforme esperado)
-✅ PROD: CORS_ORIGINS com localhost → FALHA (conforme esperado)
-✅ PROD: ALLOW_SEED=true → FALHA (conforme esperado)
-✅ DEV: Configuração válida → PASSA
-✅ DEV: CORS_ORIGINS com wildcard → PASSA
-✅ PROD: Configuração válida completa → PASSA
+PROD: DATABASE_URL faltando → FALHA (conforme esperado)
+PROD: CORS_ORIGINS faltando → FALHA (conforme esperado)
+PROD: DATABASE_URL=SQLite → FALHA (conforme esperado)
+PROD: CORS_ORIGINS="*" → FALHA (conforme esperado)
+PROD: CORS_ORIGINS com localhost → FALHA (conforme esperado)
+PROD: ALLOW_SEED=true → FALHA (conforme esperado)
+DEV: Configuração válida → PASSA
+DEV: CORS_ORIGINS com wildcard → PASSA
+PROD: Configuração válida completa → PASSA
 ```
 
-#### 2. ✅ Backend Database Configuration (`backend/db.py`)
+#### 2. Backend Database Configuration (`backend/db.py`)
 
 **Mudança:**
 ```python
@@ -44,7 +44,7 @@ if not DATABASE_URL:
 
 **Impacto:** Impossível mais usar SQLite silenciosamente em produção.
 
-#### 3. ✅ Backend FastAPI Startup (`backend/main.py`)
+#### 3. Backend FastAPI Startup (`backend/main.py`)
 
 **Mudanças:**
 - Adicionado import no topo: `from backend.config import CORS_ORIGINS, EXTERNAL_SYNC_TOKEN, IS_PRODUCTION`
@@ -53,7 +53,7 @@ if not DATABASE_URL:
 
 **Impacto:** Startup falha imediatamente se ENV=production e faltam variáveis.
 
-#### 4. ✅ Configuração de Produção
+#### 4. Configuração de Produção
 
 **Arquivo: `fly.toml.prod`**
 - Template completo com [env] section
@@ -66,52 +66,52 @@ if not DATABASE_URL:
 - Sincronização entre VITE_API_BASE_URL (build-time) e API Backend
 - Explicação de cada variável
 
-#### 5. ✅ Test Suite (`scripts/test_config_validation.py`)
+#### 5. Test Suite (`scripts/test_config_validation.py`)
 
 **Validação:**
 - 9 cenários de teste automatizados
 - Simula todos os silent failure modes conhecidos
 - Verifica fail-fast vs pass em modo DEV/PROD
-- Todos os testes PASSANDO ✅
+- Todos os testes PASSANDO
 
 ### Resultados dos Testes
 
 ```
 ▶ Teste: PROD: DATABASE_URL faltando
-  Status: ✅ PASSED (falhou conforme esperado)
+  Status: PASSED (falhou conforme esperado)
   ERROR: [CONFIG] DATABASE_URL não configurado. Em PROD: use PostgreSQL
 
 ▶ Teste: PROD: CORS_ORIGINS faltando  
-  Status: ✅ PASSED (falhou conforme esperado)
+  Status: PASSED (falhou conforme esperado)
   ERROR: [CONFIG] CORS_ORIGINS não configurado.
 
 ▶ Teste: PROD: DATABASE_URL=SQLite
-  Status: ✅ PASSED (falhou conforme esperado)
+  Status: PASSED (falhou conforme esperado)
   ERROR: [CONFIG] DATABASE_URL inválido para PROD. DEVE ser PostgreSQL
 
 ▶ Teste: PROD: CORS_ORIGINS='*' 
-  Status: ✅ PASSED (falhou conforme esperado)
+  Status: PASSED (falhou conforme esperado)
   ERROR: [CONFIG] CORS_ORIGINS contém '*' em PROD. Não permitido.
 
 ▶ Teste: PROD: CORS_ORIGINS com localhost
-  Status: ✅ PASSED (falhou conforme esperado)
+  Status: PASSED (falhou conforme esperado)
   ERROR: [CONFIG] CORS_ORIGINS contém localhost em PROD.
 
 ▶ Teste: PROD: ALLOW_SEED=true
-  Status: ✅ PASSED (falhou conforme esperado)
+  Status: PASSED (falhou conforme esperado)
   ERROR: [CONFIG] ALLOW_SEED=true em PROD é PERIGOSO.
 
-▶ Teste: DEV: Configuração válida com SQLite
-  Status: ✅ PASSED (passou conforme esperado)
+  Teste: DEV: Configuração válida com SQLite
+  Status: PASSED (passou conforme esperado)
 
-▶ Teste: DEV: CORS_ORIGINS com wildcard
-  Status: ✅ PASSED (passou conforme esperado)
+  Teste: DEV: CORS_ORIGINS com wildcard
+  Status: PASSED (passou conforme esperado)
 
-▶ Teste: PROD: Configuração válida completa
-  Status: ✅ PASSED (passou conforme esperado)
+  Teste: PROD: Configuração válida completa
+  Status: PASSED (passou conforme esperado)
 ```
 
-### 3 Silent Failures Críticos — ELIMINADOS ✅
+### 3 Silent Failures Críticos — ELIMINADOS 
 
 | Failure Mode | Antes | Depois | Status |
 |---|---|---|---|

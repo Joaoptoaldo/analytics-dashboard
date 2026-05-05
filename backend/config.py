@@ -91,7 +91,7 @@ class ConfigValidator:
             if not scheme.startswith("postgres"):
                 self.errors.append(
                     f"DATABASE_URL inválido para PROD. Esperado PostgreSQL (postgres:// ou postgresql://), "
-                    f"mas recebeu: {database_url[:50]}..."
+                    f"mas recebeu um esquema não suportado."
                 )
                 return None
 
@@ -106,13 +106,11 @@ class ConfigValidator:
         else:  # DEV
             if database_url.startswith("sqlite"):
                 self.warnings.append(
-                    f"DATABASE_URL é SQLite (DEV OK). "
-                    f"Em PROD, use PostgreSQL. "
-                    f"URL: {database_url[:50]}..."
+                    "DATABASE_URL é SQLite (DEV OK). Em PROD, use PostgreSQL."
                 )
             elif not database_url.startswith("postgresql://"):
                 self.warnings.append(
-                    f"DATABASE_URL tipo desconhecido: {database_url[:50]}..."
+                    "DATABASE_URL tipo desconhecido no ambiente atual."
                 )
 
         return database_url
