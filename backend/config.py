@@ -11,10 +11,15 @@ Princípios:
 4. Erros claros e acionáveis
 """
 
+import logging
 import os
 import sys
-import logging
 from typing import Literal
+
+from dotenv import load_dotenv
+
+# Carregar .env antes de qualquer leitura de ambiente.
+load_dotenv()
 
 # Configurar logging ANTES de tudo
 logging.basicConfig(
@@ -27,9 +32,10 @@ logger = logging.getLogger(__name__)
 # Environment Detection
 # ============================================================================
 
-ENV: Literal["development", "production"] = os.getenv("ENV", "production").lower()
+ENV = os.getenv("ENV", "production").lower().strip()
 IS_PRODUCTION = ENV == "production"
 IS_DEVELOPMENT = ENV == "development"
+ALLOWED_ENVS = {"development", "production"}
 
 # ============================================================================
 # Required Configuration Variables
@@ -49,11 +55,16 @@ class ConfigValidator:
         self.errors: list[str] = []
         self.warnings: list[str] = []
 
+        if self.env not in ALLOWED_ENVS:
+            self.errors.append(
+                f"ENV inválido: {self.env}. Valores aceitos: development, production."
+            )
+
     def validate_database_url(self) -> str:
         """
         DATABASE_URL é OBRIGATÓRIO.
         
-        PROD: MUST be PostgreSQL
+        PROD: aceita PostgreSQL (postgresql://, postgres://) e rejeita SQLite
         DEV: Pode ser SQLite, mas adverte se não PostgreSQL
         """
         database_url = os.getenv("DATABASE_URL")
@@ -69,10 +80,17 @@ class ConfigValidator:
         database_url = database_url.strip()
 
         if self.is_prod:
-            if not database_url.startswith("postgresql://"):
+            scheme = database_url.split("://", 1)[0].lower()
+
+            if scheme.startswith("sqlite"):
                 self.errors.append(
-                    f"DATABASE_URL inválido para PROD. "
-                    f"DEVE ser PostgreSQL (postgresql://...), "
+                    "DATABASE_URL inválido para PROD. SQLite não é permitido em produção."
+                )
+                return None
+
+            if not scheme.startswith("postgres"):
+                self.errors.append(
+                    f"DATABASE_URL inválido para PROD. Esperado PostgreSQL (postgres:// ou postgresql://), "
                     f"mas recebeu: {database_url[:50]}..."
                 )
                 return None
@@ -166,10 +184,14 @@ class ConfigValidator:
         token = os.getenv("EXTERNAL_SYNC_TOKEN", "").strip()
 
         if self.is_prod and not token:
-            self.warnings.append(
-                "EXTERNAL_SYNC_TOKEN não configurado em PROD. "
-                "Endpoint /internal/external-products/sync será bloqueado (500). "
-                "Se precisa de sync, configure token seguro (32+ chars)."
+            self.errors.append(
+                "EXTERNAL_SYNC_TOKEN não configurado em PROD. Configure um token seguro com 32+ chars."
+            )
+            return None
+
+        if self.is_prod and token and len(token) < 32:
+            self.errors.append(
+                f"EXTERNAL_SYNC_TOKEN muito curto ({len(token)} chars). Em PROD são exigidos 32+ chars."
             )
             return None
 

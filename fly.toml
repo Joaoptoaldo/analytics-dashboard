@@ -4,8 +4,17 @@ primary_region = "gru"
 [build]
   dockerfile = "Dockerfile"
 
+# ENV — Substitua valores sensíveis usando `fly secrets set`
 [env]
   PORT = "8080"
+  # DATABASE_URL: configure via `fly secrets set DATABASE_URL="postgresql://..."`
+  DATABASE_URL = "REPLACE_WITH_SECRET"
+  # CORS_ORIGINS: comma-separated whitelist
+  CORS_ORIGINS = "https://dashboard.example.com,https://www.dashboard.example.com"
+  # EXTERNAL_SYNC_TOKEN: set via secrets
+  EXTERNAL_SYNC_TOKEN = "REPLACE_WITH_SECRET"
+  ENV = "production"
+  ALLOW_SEED = "false"
 
 [[services]]
   internal_port = 8080
@@ -22,3 +31,13 @@ primary_region = "gru"
   [services.concurrency]
     hard_limit = 25
     soft_limit = 20
+
+[checks]
+  [checks.http]
+    grace_period = "10s"
+    interval = "30s"
+    method = "get"
+    path = "/readiness"
+    protocol = "http"
+    timeout = "10s"
+    type = "http"

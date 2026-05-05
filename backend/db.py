@@ -1,10 +1,11 @@
-import os
+import logging
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # IMPORTANTE: Não usar fallback silencioso para DATABASE_URL
 # Importar config validado (vai falhar se DATABASE_URL inválido)
-from backend.config import DATABASE_URL
+from backend.config import DATABASE_URL, IS_DEVELOPMENT
 
 # DATABASE_URL já foi validado em backend/config.py
 # Se chegou aqui, está OK para usar
@@ -31,11 +32,9 @@ def init_db():
         from backend.models.sync_state import SyncState
     except Exception:
         pass
-    Base.metadata.create_all(bind=engine)
 
-    # Seed controlado por variável de ambiente
-    ENV = os.getenv("ENV", "production")
-    if ENV == "development":
-       
-        from backend.seeds.seed_data import seed_database
-        print("[INFO] Ambiente de desenvolvimento detectado. Para popular o banco com seed, execute manualmente: backend/seeds/seed_data.py")
+    if IS_DEVELOPMENT:
+        Base.metadata.create_all(bind=engine)
+        logging.info(
+            "[DB] Ambiente de desenvolvimento detectado. Para popular o banco com seed, execute manualmente: backend/seeds/seed_data.py"
+        )

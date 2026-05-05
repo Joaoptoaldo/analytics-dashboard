@@ -1,10 +1,7 @@
 from datetime import datetime, timedelta
 
 import logging
-import os
 from typing import Any
-
-from dotenv import load_dotenv
 from sqlalchemy import distinct, func, or_
 
 # IMPORTANTE: Importar config validado PRIMEIRO
@@ -23,9 +20,6 @@ from fastapi import FastAPI, Query
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.requests import Request
-
-
-load_dotenv()
 
 
 app = FastAPI(title="Analytics Dashboard API", version="1.0.0")
@@ -78,11 +72,10 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
         return response
 
 
-cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+cors_origins = CORS_ORIGINS
 # Quando origins=['*'], credentials DEVE ser False (padrão CORS)
 allow_credentials = False  # Hardcoded for dev
-logging.info(f"[CORS] Loaded CORS_ORIGINS={cors_origins_env}, parsed={cors_origins}, allow_credentials={allow_credentials}")
+logging.info(f"[CORS] Loaded CORS_ORIGINS={cors_origins}, allow_credentials={allow_credentials}")
 
 app.add_middleware(
     CustomCORSMiddleware,

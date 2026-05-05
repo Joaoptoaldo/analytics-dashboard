@@ -6,14 +6,12 @@ from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
-from backend.db import Base, SessionLocal, engine
+from backend.db import SessionLocal
 from backend.models.sync_state import SyncState
 from backend.services.external import sync_external_products
 
 router = APIRouter()
 SYNC_STATE_KEY = "external-products-sync"
-
-Base.metadata.create_all(bind=engine)
 
 
 def _get_client_identifier(request: Request) -> str:

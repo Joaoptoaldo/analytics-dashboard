@@ -303,3 +303,46 @@ O sistema agora possui:
 **Documento Gerado:** 2026-05-04  
 **Fase:** Deploy Security Hardening (7/7)  
 **Status:** Completo ✅
+
+## Deploy Rápido — Fly.io e Render
+
+Fly.io (resumo rápido):
+
+1. Defina secrets com `flyctl`:
+
+```bash
+flyctl secrets set DATABASE_URL="postgresql://user:pass@host/db"
+flyctl secrets set EXTERNAL_SYNC_TOKEN="<token-seguro>"
+flyctl secrets set CORS_ORIGINS="https://dashboard.example.com,https://www.dashboard.example.com"
+flyctl secrets set ALLOW_SEED=false
+```
+
+2. Validar localmente antes do deploy:
+
+```bash
+python scripts/check_deploy_env.py
+```
+
+3. Deploy:
+
+```bash
+flyctl deploy
+```
+
+Render (resumo rápido):
+
+1. Configure `render.yaml` no repositório (já criado) e configure secrets na dashboard.
+
+2. (CLI) Configure secrets se preferir:
+
+```bash
+render secrets set DATABASE_URL "postgresql://user:pass@host/db"
+render secrets set EXTERNAL_SYNC_TOKEN "<token-seguro>"
+render secrets set CORS_ORIGINS "https://dashboard.example.com,https://www.dashboard.example.com"
+```
+
+3. Crie o serviço via dashboard ou CLI usando `render.yaml` e faça deploy.
+
+4. Verifique health checks e logs no painel da Render.
+
+Observação: sempre rode `python scripts/check_deploy_env.py` antes de qualquer deploy para evitar fail-fast no startup.

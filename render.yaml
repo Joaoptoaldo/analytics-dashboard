@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: dashboard-backend
+    env: docker
+    docker:
+      dockerfilePath: Dockerfile
+    plan: starter
+    instanceCount: 1
+    healthCheckPath: /readiness
+    envVars:
+      - key: ENV
+        value: production
+      - key: ALLOW_SEED
+        value: "false"
+      - key: DATABASE_URL
+        fromSecret: DATABASE_URL
+      - key: CORS_ORIGINS
+        fromSecret: CORS_ORIGINS
+      - key: EXTERNAL_SYNC_TOKEN
+        fromSecret: EXTERNAL_SYNC_TOKEN
+
+# Notes:
+# - Set secrets in Render dashboard or via `render secrets set DATABASE_URL "..."` before deploy.
+# - This file allows Render to auto-create the service via the dashboard or CLI.
