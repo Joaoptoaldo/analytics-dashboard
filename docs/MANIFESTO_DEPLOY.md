@@ -228,16 +228,6 @@ Tudo está em português para facilitar.
 └─────────────────────────────────────────
 ```
 
----
-
-## SUPORTE & CONTATO
-
-- **Issues técnicos?** → Ver DEPLOY_CHECKLIST.md troubleshooting
-- **Dúvidas de testes?** → Ver QA_FINAL_REPORT.md
-- **Dados estruturados?** → Ver qa_report.json
-- **Production strictness?** → Ver qa_production_strictness.json
-
----
 
 **LIBERADO PARA DEPLOY!**
 

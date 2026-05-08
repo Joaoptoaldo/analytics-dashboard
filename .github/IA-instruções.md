@@ -201,7 +201,7 @@ Autorizacoes validas:
   * direcao futura
 * aponte riscos tecnicos e consequencias
 * priorize solucoes limpas e sustentaveis
-* evite gambiarra
+* evite "gambiarra"
 
 ## Quando sugerir codigo
 

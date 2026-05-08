@@ -17,6 +17,14 @@ RECENT_DATA_WINDOW_DAYS = 180
 
 
 def _parse_iso_date(s: Optional[str]) -> Optional[datetime.date]:
+    """_summary_: tenta parsear uma string de data em formatos ISO comuns, retornando None se a string for vazia ou inválida
+
+    Args:
+        s (Optional[str]): _description_: string de data a ser parseada
+
+    Returns:
+        Optional[datetime.date]: _description_: um objeto datetime.date se o parse for bem-sucedido, ou None se a string for vazia ou inválida
+    """
     if not s:
         return None
     try:
@@ -30,7 +38,11 @@ def _parse_iso_date(s: Optional[str]) -> Optional[datetime.date]:
 
 
 def _get_reference_date() -> datetime.date:
-    """Usa o último date não sintético como referência para manter o sync no mesmo horizonte temporal do dataset."""
+    """_summary_: busca a data mais recente dos produtos não sintéticos no banco para usar como referência
+
+    Returns:
+        datetime.date: _description_: data mais recente dos produtos não sintéticos no banco ou data atual se não houver produtos ou em caso de erro
+    """
     db = SessionLocal()
     try:
         reference = (
@@ -44,17 +56,36 @@ def _get_reference_date() -> datetime.date:
 
 
 def _deterministic_recent_date(key: int, horizon_days: int = RECENT_DATA_WINDOW_DAYS, reference_date: Optional[datetime.date] = None) -> datetime.date:
+    """_summary_: mapeia um inteiro (ex: id do produto) para uma data dentro de uma janela recente de forma determinística, garantindo que produtos sem data ou com data inválida sejam distribuídos ao longo dos últimos meses, evitando picos artificiais em datas específicas
+
+    Args:
+        key (int): _description_: um inteiro único relacionado ao produto (ex: id ou hash de algum atributo)
+        horizon_days (int, optional): _description_. Defaults to RECENT_DATA_WINDOW_DAYS.
+        reference_date (Optional[datetime.date], optional): _description_. Defaults to None.
+
+    Returns:
+        datetime.date: _description_: uma data dentro dos últimos `horizon_days` dias a partir de `reference_date` (ou data atual se não fornecida), mapeada de forma determinística a partir do `key`
+    """
     anchor = reference_date or datetime.now().date()
     return anchor - timedelta(days=key % horizon_days)
 
 
 def _normalize_recent_date(raw_date: Optional[datetime.date], key: int, reference_date: Optional[datetime.date] = None) -> datetime.date:
-    """Mantém datas recentes, mas substitui datas antigas/ausentes por uma janela recente determinística."""
+    """_summary_: normaliza uma data para garantir que esteja dentro de uma janela recente, usando um mapeamento determinístico para casos de datas ausentes ou inválidas, evitando distorções nos dados e garantindo uma distribuição mais realista das datas dos produtos
+
+    Args:
+        raw_date (Optional[datetime.date]): _description_: a data original extraída da fonte externa, que pode ser None ou inválida
+        key (int): _description_: um inteiro único relacionado ao produto (ex: id ou hash de algum atributo), usado para gerar uma data determinística quando `raw_date` for ausente ou inválida
+        reference_date (Optional[datetime.date], optional): _description_. Defaults to None.
+
+    Returns:
+        datetime.date: _description_: a data normalizada, que será igual a `raw_date` se esta for válida e recente, ou uma data determinística dentro dos últimos `RECENT_DATA_WINDOW_DAYS` dias caso contrário
+    """
     anchor = reference_date or datetime.now().date()
     if raw_date is None:
         return _deterministic_recent_date(key, reference_date=anchor)
 
-    # Alguns provedores/consumidores podem entregar datetime; normaliza para date.
+    # Alguns provedores/consumidores podem entregar datetime; normaliza para date
     if isinstance(raw_date, datetime):
         raw_date = raw_date.date()
 
@@ -65,9 +96,10 @@ def _normalize_recent_date(raw_date: Optional[datetime.date], key: int, referenc
 
 
 def fetch_external_products() -> List[Dict[str, Any]]:
-    """Busca produtos em serviços externos. Tenta Marketstack (se `MARKETSTACK_API_KEY` setado),
-    caso contrário usa DummyJSON como fallback.
-    Ao não encontrar data válida, atribui uma data histórica determinística dentro dos últimos 365 dias.
+    """_summary_: busca produtos de fontes externas (Marketstack se API key disponível, caso contrário DummyJSON), aplicando normalização de datas para garantir que estejam dentro de uma janela recente, e mapeando os dados para o formato esperado pela aplicação
+
+    Returns:
+        List[Dict[str, Any]]: _description_: uma lista de dicionários representando os produtos externos, com campos normalizados e prontos para serem persistidos no banco local
     """
     DUMMYJSON_URL = os.getenv("DUMMYJSON_URL", "https://dummyjson.com/products")
     api_key = os.getenv("MARKETSTACK_API_KEY")
@@ -201,10 +233,10 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
 
 def sync_external_products() -> int:
-    """Sincroniza produtos externos no banco local por `external_id`.
+    """_summary_: sincroniza os produtos externos com o banco local, buscando os dados de fontes externas, normalizando as datas, e persistindo as informações no banco, atualizando produtos existentes ou criando novos registros conforme necessário
 
     Returns:
-        int: Quantidade de registros processados (inseridos ou atualizados).
+        int: _description_: o número de produtos processados/sincronizados
     """
     rows = fetch_external_products()
     db = SessionLocal()
@@ -241,7 +273,11 @@ def sync_external_products() -> int:
 
 
 def get_persisted_products() -> List[Dict[str, Any]]:
-    """Retorna os produtos persistidos no banco local ordenados por data descrescente."""
+    """_summary_: busca os produtos persistidos no banco local, retornando uma lista de dicionários representando os produtos, para serem consumidos pela API ou outras partes da aplicação
+
+    Returns:
+        List[Dict[str, Any]]: _description_: uma lista de dicionários representando os produtos persistidos no banco local, com campos convertidos para tipos nativos (ex: date para string) e prontos para consumo
+    """
     db = SessionLocal()
     try:
         products = db.query(Product).order_by(Product.date.desc()).all()

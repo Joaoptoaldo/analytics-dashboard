@@ -9,10 +9,10 @@ Este indice lista apenas documentos operacionais ativos.
 ## Documentacao em docs/
 
 - README-QUICKSTART.md
-	- Subida local rapida (frontend + backend)
-- NEXT_STEPS_DEPLOY.md
+	- Subida local rapida (frontend + backend) 
+- next_steps_deploy.md
 	- Proximos passos de deploy e validacoes finais
-- DEPLOY_CHECKLIST.md
+- deploy_checklist.md
 	- Checklist pre e pos deploy
 - deploy-seguro.md
 	- Baseline de seguranca para deploy

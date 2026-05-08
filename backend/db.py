@@ -24,7 +24,14 @@ if not DATABASE_URL:
 
 
 def _normalize_sqlite_url(database_url: str) -> str:
-    """Resolve URLs SQLite relativas para um caminho absoluto baseado na raiz do repositório."""
+    """_summary_: normaliza a URL do SQLite para garantir que o caminho do arquivo seja absoluto, evitando problemas de caminho relativo que podem ocorrer dependendo do diretório de trabalho ao iniciar a aplicação, especialmente em ambientes de desenvolvimento. Se a URL já for absoluta ou for um banco em memória, ela é retornada sem alterações. Caso contrário, o caminho é convertido para absoluto com base no diretório raiz do projeto
+
+    Args:
+        database_url (str): _description_: a URL de conexão do banco de dados SQLite, que pode ser relativa ou absoluta, e será normalizada para garantir que o caminho do arquivo seja absoluto para evitar problemas de conexão dependendo do diretório de trabalho ao iniciar a aplicação
+
+    Returns:
+        str: _description_: a URL de conexão do banco de dados SQLite normalizada, garantindo que o caminho do arquivo seja absoluto para evitar problemas de conexão, especialmente em ambientes de desenvolvimento onde o diretório de trabalho pode variar
+    """
     if not database_url.startswith("sqlite"):
         return database_url
     if database_url.startswith("sqlite:///:memory:"):
@@ -100,6 +107,11 @@ Base = declarative_base()
 
 
 def _db_host() -> str:
+    """_summary_: extrai o host do banco de dados a partir da URL de conexão para fins de monitoramento e logging, retornando "unknown" se o host não puder ser determinado, para fornecer informações sobre o banco de dados conectado sem expor detalhes sensíveis da URL completa
+
+    Returns:
+        str: _description_: o host do banco de dados, ou "unknown" se não puder ser determinado
+    """
     return getattr(getattr(engine, "url", None), "host", None) or "unknown"
 
 
@@ -108,6 +120,24 @@ def check_database_readiness(
     retry_delay_seconds: float = 0.25,
     slow_threshold_ms: float = 300.0,
 ) -> dict[str, Any]:
+    """_summary_: verifica a prontidão do banco de dados realizando tentativas de conexão e validação de esquema, para garantir que o banco de dados esteja acessível e configurado corretamente antes de iniciar a aplicação, retornando um dicionário com o status da prontidão, motivo, latência e outras informações relevantes para monitoramento e diagnóstico
+
+    Args:
+        max_attempts (int, optional): _description_. Defaults to 3.
+        retry_delay_seconds (float, optional): _description_. Defaults to 0.25.
+        slow_threshold_ms (float, optional): _description_. Defaults to 300.0.
+
+    Returns:
+        dict[str, Any]: _description_: um dicionário contendo informações sobre a prontidão do banco de dados, incluindo:
+            - `ready` (bool): indica se o banco de dados está pronto para uso (True) ou não (False)
+            - `status` (str): um status geral da prontidão, como "ready" ou "not_ready"
+            - `reason` (str): um motivo específico para o status, como "ok", "db_error", "schema_missing", ou "db_slow"
+            - `database` (str): o status da conectividade com o banco de dados, como "ok" ou "failed"
+            - `schema` (str): o status da validação do esquema, como "ok" ou "failed"
+            - `latency_ms` (float): a latência em milissegundos para a tentativa de conexão e validação, para monitoramento de desempenho
+            - `db_host` (str): o host do banco de dados conectado, para fins de monitoramento e diagnóstico, sem expor detalhes sensíveis da URL completa
+            - `error_name` (str | None): o nome da última exceção de erro ocorrida durante as tentativas, ou None se não houver erros, para fins de diagnóstico e monitoramento de falhas do banco de dados 
+    """
     started_at = time.perf_counter()
     db_host = _db_host()
     last_error_name: str | None = None
@@ -218,12 +248,23 @@ def check_database_readiness(
 
 
 def ping_database_with_retry(max_attempts: int = 3, retry_delay_seconds: float = 0.25) -> tuple[bool, str | None]:
+    """_summary_: realiza uma tentativa de ping no banco de dados com múltiplas tentativas e atraso entre elas, para verificar a conectividade com o banco de dados de forma resiliente, retornando um tuple indicando se o ping foi bem-sucedido e o nome do erro caso tenha falhado após todas as tentativas, para fornecer uma verificação rápida da disponibilidade do banco de dados sem realizar validação de esquema completa
+
+    Args:
+        max_attempts (int, optional): _description_. Defaults to 3.
+        retry_delay_seconds (float, optional): _description_. Defaults to 0.25.
+
+    Returns:
+        tuple[bool, str | None]: _description_: um tuple onde o primeiro elemento é um booleano indicando se o ping foi bem-sucedido (True) ou não (False), e o segundo elemento é o nome do erro ocorrido durante as tentativas de ping, ou None se o ping foi bem-sucedido, para fins de diagnóstico e monitoramento da disponibilidade do banco de dados
+    """
     result = check_database_readiness(max_attempts=max_attempts, retry_delay_seconds=retry_delay_seconds, slow_threshold_ms=float("inf"))
     return bool(result["ready"]), result["error_name"]
 
 
 
 def init_db():
+    """_summary_: inicializa o banco de dados criando as tabelas necessárias com base nos modelos definidos, para garantir que o esquema do banco de dados esteja configurado corretamente antes de iniciar a aplicação, especialmente em ambientes de desenvolvimento onde a criação automática de tabelas é conveniente, enquanto em produção espera-se que o banco já esteja migrado e pronto para uso
+    """
     try:
         from backend.models.product import Product
         from backend.models.sync_state import SyncState

@@ -1,6 +1,6 @@
 # fly.toml — Configuração de Produção para Fly.io (PRODUCTION-GRADE)
 # 
-# ⚠️ IMPORTANTE: Este arquivo contém valores placeholder.
+# IMPORTANTE: Este arquivo contém valores placeholder.
 # Substitua pelos valores REAIS de sua infraestrutura antes de fazer deploy.
 
 app = "dashboard-backend"
@@ -27,19 +27,19 @@ primary_region = "gru"
   # DATABASE_URL: Conexão PostgreSQL de produção
   # Formato: postgresql://[user[:password]@][netloc][:port][/dbname]
   # Exemplo: postgresql://user:password@db.neon.tech/dashboard?sslmode=require
-  # ⚠️ NÃO use SQLite em produção (dados perdidos em restart)
+  # NÃO use SQLite em produção (dados perdidos em restart)
   DATABASE_URL = "postgresql://neon_user:neon_password@db-endpoint.neon.tech/dashboard?sslmode=require"
 
   # CORS_ORIGINS: Domínios permitidos para CORS (whitelist explícita)
   # Separe múltiplos domínios com vírgula
   # Exemplo: https://dashboard.example.com,https://www.dashboard.example.com
-  # ⚠️ NÃO use "http://localhost" ou "*" em produção
+  # NÃO use "http://localhost" ou "*" em produção
   CORS_ORIGINS = "https://dashboard.example.com,https://www.dashboard.example.com"
 
   # EXTERNAL_SYNC_TOKEN: Token para autenticação do endpoint /internal/external-products/sync
   # Gere um valor aleatório seguro (32+ caracteres)
   # Exemplo: openssl rand -hex 16 (no terminal)
-  # ⚠️ NÃO use valores triviais (ex: "secret", "token123")
+  # NÃO use valores triviais (ex: "secret", "token123")
   EXTERNAL_SYNC_TOKEN = "gerar-token-aleatorio-seguro-32-chars-aqui"
 
   # ENV: Modo de operação

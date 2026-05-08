@@ -1,8 +1,11 @@
-# Environment variables and secrets
+# variaveis de ambiente 
 .env
+env
 .env.local
+env.local
 .env.*.local
 .env.production
+env.production
 .env.production.local
 .env.qa
 .env.qa.local
@@ -17,13 +20,13 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Virtual environments
+# variaveis de ambiente do backend virtualenv
 .venv/
 venv/
 backend/.venv/
 backend/venv/
 
-# Python bytecode and caches
+# python cache e arquivos compilados
 __pycache__/
 *.py[cod]
 *$py.class
@@ -33,13 +36,14 @@ backend/*.pyc
 .mypy_cache/
 .tox/
 
-# Test and coverage
+# test coverage
+.cache
 coverage.xml
 htmlcov/
 .coverage
 .coverage.*
 
-# Database files and snapshots
+#database e arquivos relacionados a banco de dados
 backend.db
 *.sqlite3
 .db
@@ -48,13 +52,13 @@ backend/*.db
 audit_*.db
 *.sqlite
 
-# Archives and exports
+# arquivos de backup e arquivos compactados
 *.zip
 *.tar
 *.gz
 *.tar.gz
 
-# Pip audit reports and logs
+# pip audit reports 
 pip_audit_*.json
 pip_audit_report.json
 *.log
@@ -68,6 +72,7 @@ frontend-static.err.log
 logs/
 
 # IDE / editor
+.vscode
 .vscode/
 .idea/
 *.iml

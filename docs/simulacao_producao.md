@@ -1,4 +1,4 @@
-# Simulacao de Producao - Neon + Render + Vercel
+# Simulacao de Producao - PostgreSQL + Render + Vercel
 
 Data: 2026-05-08
 
@@ -7,7 +7,7 @@ Data: 2026-05-08
 - Etapa 1: auditoria de producao (codigo e configuracao)
 - Etapa 2: preparo backend para Render (ajustes minimos e seguros)
 - Etapa 3: preparo frontend para Vercel (ajustes minimos e seguros)
-- Etapa 4: simulacao operacional com backend local + Neon real
+- Etapa 4: simulacao operacional com backend local + PostgreSQL real
 - Etapa 5: carga leve controlada
 
 ## Evidencias Objetivas
@@ -16,7 +16,7 @@ Data: 2026-05-08
 - build frontend: OK
 - pytest relevante backend: 3 passed
 - startup backend local: OK
-- readiness oscilando com latencia real de Neon (503 por db_slow seguido de 200)
+- readiness oscilando com latencia real de PostgreSQL (503 por db_slow seguido de 200)
 - endpoint legado /api/sales em PostgreSQL: corrigido e validado em runtime (200)
 - /metrics: endpoint responde sem crash (modo degradado quando prometheus_client ausente no ambiente)
 

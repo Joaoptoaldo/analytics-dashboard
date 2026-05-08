@@ -17,6 +17,14 @@ load_dotenv()
 
 
 def get_remote_session(database_url: str):
+    """_summary_: cria uma sessão SQLAlchemy para o banco de dados remoto, garantindo que a tabela de produtos exista no destino antes de retornar a sessão para uso
+
+    Args:
+        database_url (str): _description_: a URL de conexão do banco de dados remoto (ex: Postgres), que deve ser exportada na variável de ambiente `DATABASE_URL` antes de executar o script
+
+    Returns:
+        _type_: _description_: uma sessão SQLAlchemy conectada ao banco de dados remoto, pronta para ser usada para operações de leitura/escrita
+    """
     engine = create_engine(database_url, pool_pre_ping=True)
     Session = sessionmaker(bind=engine)
     # Garantir que tabela exista no destino
@@ -25,6 +33,11 @@ def get_remote_session(database_url: str):
 
 
 def sync_to_remote():
+    """_summary_: sincroniza os produtos do banco local para o banco remoto, buscando todos os produtos locais, verificando se já existem no remoto (baseado em `external_id`), e atualizando ou inserindo conforme necessário, para garantir que os dados estejam alinhados entre os ambientes local e remoto
+
+    Raises:
+        RuntimeError: _description_: se a variável de ambiente `DATABASE_URL` não estiver definida, indicando que a URL do banco remoto não foi fornecida, o que é necessário para executar a sincronização
+    """
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise RuntimeError("DATABASE_URL não definida. Exporte a URL do Postgres antes de executar")

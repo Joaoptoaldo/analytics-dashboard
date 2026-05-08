@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { SidebarInset, SidebarTrigger } from '../components/ui/sidebar'
 import { useToast } from '../hooks/use-toast'
 
-// Placeholder para dados - será substituído por hook
+// placeholder para dados 
 const mockData = {
   totalRevenue: '$1,234,567',
   totalOrders: '12,345',
@@ -80,7 +80,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </div>
-            {/* Placeholder Gráficos */}
+            {/* placeholder gráficos */}
             <Card>
               <CardHeader>
                 <CardTitle>Vendas Mensais (Recharts próximo)</CardTitle>

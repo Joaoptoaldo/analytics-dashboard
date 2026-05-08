@@ -12,6 +12,11 @@ from backend.db import check_database_readiness
 
 
 def main() -> int:
+    """_summary_: script de validação do runtime, que verifica a conectividade e prontidão do banco de dados antes de iniciar a aplicação, para garantir que o ambiente esteja configurado corretamente e evitar falhas em tempo de execução devido a problemas de conexão com o banco
+
+    Returns:
+        int: _description_: retorna 0 se a validação for bem-sucedida (banco pronto), ou 1 se a validação falhar (banco não pronto ou erro de conexão)
+    """
     print("[STARTUP] config loaded", GLOBAL_CONFIG.get("env"))
 
     result = check_database_readiness(max_attempts=3, retry_delay_seconds=0.25, slow_threshold_ms=300.0)

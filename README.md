@@ -156,12 +156,12 @@ URLs locais:
 ## Documentacao e Scripts
 
 - Documentacao operacional: docs/
-  - docs/NEXT_STEPS_DEPLOY.md
-  - docs/DEPLOY_CHECKLIST.md
+  - docs/next_steps_deploy.md
+  - docs/deploy_checklist.md
   - docs/deploy-seguro.md
-  - docs/runbook-rotacao-credenciais.md
   - docs/README-QUICKSTART.md
-  - docs/INDICE_DOCUMENTOS.md
+  - docs/indice_documentos.md
+  - docs/simulacao_producao.md
 - Scripts utilitarios e QA: scripts/
 - Scripts auxiliares de backend: backend/scripts/
 

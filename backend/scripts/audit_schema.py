@@ -1,4 +1,3 @@
-"""Audit script to inspect actual database schema vs models"""
 import sqlite3
 import sys
 from pathlib import Path
@@ -9,7 +8,8 @@ sys.path.insert(0, str(BASE_DIR))
 DB_PATH = BASE_DIR / "backend.db"
 
 def inspect_db():
-    """Inspect SQLite database schema"""
+    """_summary_: inspeciona o banco de dados SQLite, listando as tabelas, colunas, tipos de dados, chaves primárias, chaves estrangeiras e índices, além de contar o número de registros em cada tabela, para fornecer uma visão geral da estrutura do banco e ajudar na auditoria do schema
+    """
     if not DB_PATH.exists():
         print(f"Database not found at {DB_PATH}")
         return
