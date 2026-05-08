@@ -5,6 +5,8 @@ import zlib
 import logging
 import requests
 
+from sqlalchemy import func
+
 from ..db import SessionLocal
 from ..models.product import Product
 
@@ -27,20 +29,34 @@ def _parse_iso_date(s: Optional[str]) -> Optional[datetime.date]:
             return None
 
 
-def _deterministic_recent_date(key: int, horizon_days: int = RECENT_DATA_WINDOW_DAYS) -> datetime.date:
-    today = datetime.now().date()
-    return today - timedelta(days=key % horizon_days)
+def _get_reference_date() -> datetime.date:
+    """Usa o último date não sintético como referência para manter o sync no mesmo horizonte temporal do dataset."""
+    db = SessionLocal()
+    try:
+        reference = (
+            db.query(func.max(Product.date))
+            .filter(Product.is_synthetic == False)
+            .scalar()
+        )
+        return reference or datetime.now().date()
+    finally:
+        db.close()
 
 
-def _normalize_recent_date(raw_date: Optional[datetime.date], key: int) -> datetime.date:
+def _deterministic_recent_date(key: int, horizon_days: int = RECENT_DATA_WINDOW_DAYS, reference_date: Optional[datetime.date] = None) -> datetime.date:
+    anchor = reference_date or datetime.now().date()
+    return anchor - timedelta(days=key % horizon_days)
+
+
+def _normalize_recent_date(raw_date: Optional[datetime.date], key: int, reference_date: Optional[datetime.date] = None) -> datetime.date:
     """Mantém datas recentes, mas substitui datas antigas/ausentes por uma janela recente determinística."""
+    anchor = reference_date or datetime.now().date()
     if raw_date is None:
-        return _deterministic_recent_date(key)
+        return _deterministic_recent_date(key, reference_date=anchor)
 
-    today = datetime.now().date()
-    cutoff = today - timedelta(days=RECENT_DATA_WINDOW_DAYS)
-    if raw_date < cutoff or raw_date > today:
-        return _deterministic_recent_date(key)
+    cutoff = anchor - timedelta(days=RECENT_DATA_WINDOW_DAYS)
+    if raw_date < cutoff or raw_date > anchor:
+        return _deterministic_recent_date(key, reference_date=anchor)
     return raw_date
 
 
@@ -51,17 +67,30 @@ def fetch_external_products() -> List[Dict[str, Any]]:
     """
     DUMMYJSON_URL = os.getenv("DUMMYJSON_URL", "https://dummyjson.com/products")
     api_key = os.getenv("MARKETSTACK_API_KEY")
+    reference_date = _get_reference_date()
 
     # Marketstack path (se houver api_key)
     if api_key:
         base = os.getenv("MARKETSTACK_BASE_URL", "https://api.marketstack.com/v1/eod")
         symbols = [s.strip().upper() for s in os.getenv("MARKETSTACK_SYMBOLS", "AAPL,MSFT,GOOGL").split(",") if s.strip()]
-        # Prepare a deterministic fallback date per symbol within last 365 days
-        today_date = datetime.now().date()
         rows: List[Dict[str, Any]] = []
+        # Prepare optional tracing headers
+        try:
+            from backend.logging_config import get_trace_id, get_span_id
+            t_id = get_trace_id() or None
+            s_id = get_span_id() or None
+        except Exception:
+            t_id = None
+            s_id = None
+
+        headers = {}
+        if t_id:
+            headers["X-Trace-Id"] = t_id
+            headers["traceparent"] = f"00-{t_id}-{s_id or '0'*16}-01"
+
         for sym in symbols:
             try:
-                resp = requests.get(base, params={"access_key": api_key, "symbols": sym}, timeout=10)
+                resp = requests.get(base, params={"access_key": api_key, "symbols": sym}, timeout=10, headers=headers or None)
                 resp.raise_for_status()
                 data = resp.json()
                 items = data.get("data") or data.get("results") or []
@@ -81,7 +110,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
             ext_id = zlib.adler32(sym.encode("utf-8"))
             # Force a recent deterministic date when the source is missing or too old
-            date_val = _normalize_recent_date(date_val, int(ext_id))
+            date_val = _normalize_recent_date(date_val, int(ext_id), reference_date=reference_date)
 
             rows.append(
                 {
@@ -97,7 +126,20 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
     # Fallback: DummyJSON (comportamento legado)
     try:
-        resp = requests.get(DUMMYJSON_URL, timeout=10)
+        # attach optional trace headers
+        try:
+            from backend.logging_config import get_trace_id, get_span_id
+            t_id = get_trace_id() or None
+            s_id = get_span_id() or None
+        except Exception:
+            t_id = None
+            s_id = None
+        headers = {}
+        if t_id:
+            headers["X-Trace-Id"] = t_id
+            headers["traceparent"] = f"00-{t_id}-{s_id or '0'*16}-01"
+
+        resp = requests.get(DUMMYJSON_URL, timeout=10, headers=headers or None)
         resp.raise_for_status()
         data = resp.json()
         products = data.get("products", [])
@@ -129,7 +171,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
         except Exception:
             key2 = idx
 
-        normalized_date = _normalize_recent_date(date_val, key2)
+        normalized_date = _normalize_recent_date(date_val, key2, reference_date=reference_date)
         if date_val != normalized_date:
             logger.warning(
                 "[DATA_INTEGRITY] Produto id=%s com data antiga/inválida. Normalizando para %s",

@@ -1,9 +1,11 @@
-# Environment variables
-env
+# Environment variables and secrets
 .env
-.env*.local
-env.local
-.env*.local
+.env.local
+.env.*.local
+.env.production
+.env.production.local
+.env.qa
+.env.qa.local
 
 # Node / frontend
 node_modules/
@@ -14,9 +16,6 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-log
-.log
-*.log
 
 # Virtual environments
 .venv/
@@ -32,31 +31,38 @@ backend/__pycache__/
 backend/*.pyc
 .pytest_cache/
 .mypy_cache/
-
-# Test and coverage
-.pytest_cache/
-coverage.xml
-htmlcov/
 .tox/
 
-# Database files (local development)
+# Test and coverage
+coverage.xml
+htmlcov/
+.coverage
+.coverage.*
+
+# Database files and snapshots
 backend.db
 *.sqlite3
 *.db
 backend/*.db
-zip
-.zip
-zip.*
-.zip.*
+audit_*.db
+*.sqlite
 
-# Pip audit reports (should not be versioned)
+# Archives and exports
+*.zip
+*.tar
+*.gz
+
+# Pip audit reports and logs
 pip_audit_*.json
 pip_audit_report.json
-
-# Logs
 *.log
+*.err.log
 backend.log
 backend.err.log
+frontend.log
+frontend.err.log
+frontend-static.log
+frontend-static.err.log
 logs/
 
 # IDE / editor
@@ -67,3 +73,4 @@ logs/
 # Legacy / OS
 .next/
 .DS_Store
+Thumbs.db

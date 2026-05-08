@@ -8,29 +8,20 @@ if str(BASE_DIR) not in sys.path:
 from sqlalchemy import inspect, text
 
 from backend.config import GLOBAL_CONFIG
-from backend.db import engine, ping_database_with_retry
+from backend.db import check_database_readiness
 
 
 def main() -> int:
     print("[STARTUP] config loaded", GLOBAL_CONFIG.get("env"))
 
-    ok, error_name = ping_database_with_retry(max_attempts=3, retry_delay_seconds=0.25)
-    if not ok:
-        print(f"[DB] ping failed: {error_name}")
-        return 1
+    result = check_database_readiness(max_attempts=3, retry_delay_seconds=0.25, slow_threshold_ms=300.0)
 
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-            has_products = inspect(conn).has_table("products")
-    except Exception as exc:
-        import traceback
-        print(f"[DB] validation query failed: {exc.__class__.__name__}")
-        traceback.print_exc()
-        return 1
-
-    if not has_products:
-        print("[DB] schema invalid: missing table 'products'")
+    if not result["ready"]:
+        print(
+            f"[DB] validation failed host={result.get('db_host', 'unknown')} "
+            f"reason={result.get('reason', 'db_error')} error={result.get('error_name', 'unknown')} "
+            f"latency_ms={result.get('latency_ms', 0)}"
+        )
         return 1
 
     print("[DB] runtime validation OK")

@@ -50,10 +50,22 @@ export function unwrapApiResponse<T>(response: unknown): T[] {
   return envelope.data
 }
 
-export async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Erro na API: ${response.status}`)
+export async function fetchJson<T>(url: string, timeoutMs = 10000): Promise<T> {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, { signal: controller.signal })
+    if (!response.ok) {
+      throw new Error(`Erro na API: ${response.status}`)
+    }
+    return response.json() as Promise<T>
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Tempo limite da requisição atingido', { cause: error })
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeoutId)
   }
-  return response.json() as Promise<T>
 }

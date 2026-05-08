@@ -18,7 +18,7 @@ def sales_monthly_router(
     period: str = Query(default="all"),
     category: str = Query(default="all"),
     status: str = Query(default="all"),
-    search: str = Query(default=""),
+    search: str = Query(default="", max_length=100),
 ):
     """_summary_: Retorna a série mensal de vendas agregada por mês.
 
@@ -34,7 +34,7 @@ def sales_trend_router(
     period: str = Query(default="all"),
     category: str = Query(default="all"),
     status: str = Query(default="all"),
-    search: str = Query(default=""),
+    search: str = Query(default="", max_length=100),
 ):
     """_summary_: Retorna a tendência de vendas no intervalo solicitado.
 
@@ -72,10 +72,13 @@ def top_products_router(limit: int = Query(default=10, ge=1, le=50)):
 
 @router.get("/metrics/ticket-average", response_model=AnalyticsResponse)
 def ticket_average_router():
-    """_summary_: Retorna a série mensal de ticket médio.
+    """_summary_: Retorna a série mensal de ticket real (receita por cliente único).
+    
+    Fórmula: Ticket Real = SUM(revenue) / COUNT(DISTINCT clients)
+    Campo `avg_ticket` reflete o valor médio que cada cliente gera por mês.
 
     Returns:
-        _type_: _description_: AnalyticsResponse com `state` e lista em `data` contendo `month`, `avg_ticket`, `orders` e `date_source`.
+        _type_: _description_: AnalyticsResponse com `state` e lista em `data` contendo `month`, `avg_ticket` (ticket real em R$), `distinct_clients` (clientes únicos), `orders` e `date_source`.
     """
     return get_ticket_average()
 

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function Settings() {
   const [siteName, setSiteName] = useState(() => {
@@ -26,12 +26,24 @@ export default function Settings() {
     }
   })
   const [saved, setSaved] = useState(false)
+  const savedTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current !== null) {
+        window.clearTimeout(savedTimerRef.current)
+      }
+    }
+  }, [])
 
   const onSave = () => {
     const payload = { siteName, itemsPerPage }
     localStorage.setItem('app_settings', JSON.stringify(payload))
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    if (savedTimerRef.current !== null) {
+      window.clearTimeout(savedTimerRef.current)
+    }
+    savedTimerRef.current = window.setTimeout(() => setSaved(false), 2000)
   }
 
   return (

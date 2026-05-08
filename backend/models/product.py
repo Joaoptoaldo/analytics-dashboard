@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Date, Float, Integer, String, UniqueConstraint, Boolean
+﻿from sqlalchemy import Boolean, Column, Date, Float, Index, Integer, String, UniqueConstraint
 
 from backend.db import Base
 
@@ -14,7 +14,10 @@ class Product(Base):
     region = Column(String(50), nullable=True, comment="deprecated: kept temporarily for backward compatibility")
     date = Column(Date)
     is_synthetic = Column(Boolean, default=False, comment="True if record is from seed data (test), False if from external sync (real)")
-    __table_args__ = (UniqueConstraint("external_id", name="uq_external_id"),)
+    __table_args__ = (
+        UniqueConstraint("external_id", name="uq_external_id"),
+        Index("ix_products_date_category_status", "date", "category", "status"),
+    )
 
     def to_dict(self):
         """_summary_: Converte o modelo Product para dicionario serializavel.

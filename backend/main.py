@@ -12,8 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend.config import CORS_ORIGINS, EXTERNAL_SYNC_TOKEN, IS_PRODUCTION, IS_DEVELOPMENT
 
 from backend.data import CATEGORIES, STATUSES
-from backend.db import SessionLocal, init_db
-from backend.db import engine
+from backend.db import SessionLocal, check_database_readiness, init_db
 from backend.metrics_engine import get_total_revenue
 from backend.models.product import Product
 from backend.routers.analytics import router as analytics_router
@@ -25,9 +24,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.requests import Request
+from starlette.middleware.gzip import GZipMiddleware
+import uuid
+import asyncio
+import time as _time
+from collections import defaultdict
+from backend.logging_config import set_request_id, get_request_id, set_trace_id, set_span_id, get_trace_id, get_span_id
+from backend import metrics as metrics_module
 
 
 app = FastAPI(title="Analytics Dashboard API", version="1.0.0")
+# Inicializar Sentry (se configurado)
+from backend.sentry_init import init_sentry
+init_sentry()
 app.include_router(products_router, prefix="/api")
 app.include_router(external_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
@@ -55,6 +64,7 @@ app.add_middleware(
     max_age=3600,
 )
 
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
@@ -71,13 +81,158 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        # Generate or respect incoming request id
+        incoming_id = request.headers.get("X-Request-ID")
+        request_id = incoming_id or str(uuid.uuid4())
+        set_request_id(request_id)
+
+        # Trace propagation (W3C `traceparent` or custom X-Trace-Id)
+        traceparent = request.headers.get("traceparent") or request.headers.get("Traceparent")
+        trace_id = None
+        span_id = None
+        if traceparent:
+            try:
+                # Expected format: version-traceid-spanid-flags
+                parts = traceparent.split("-")
+                if len(parts) >= 3:
+                    trace_id = parts[1]
+                    span_id = parts[2]
+            except Exception:
+                trace_id = None
+                span_id = None
+        else:
+            # fallback to X-Trace-Id header
+            trace_id = request.headers.get("X-Trace-Id") or request.headers.get("x-trace-id")
+
+        if not trace_id:
+            trace_id = uuid.uuid4().hex
+        if not span_id:
+            span_id = uuid.uuid4().hex[:16]
+
+        set_trace_id(trace_id)
+        set_span_id(span_id)
+
+        start = perf_counter()
+        try:
+            response = await call_next(request)
+            duration_ms = int((perf_counter() - start) * 1000)
+
+            extra = {
+                "route": request.url.path,
+                "method": request.method,
+                "status_code": getattr(response, "status_code", None),
+                "duration_ms": duration_ms,
+                "client_ip": request.client.host if request.client else None,
+                "trace_id": trace_id,
+                "span_id": span_id,
+            }
+            logging.info("request.finished", extra=extra)
+
+            # Propagar request id e trace headers na resposta para correlação
+            try:
+                response.headers.setdefault("X-Request-ID", request_id)
+                response.headers.setdefault("X-Trace-Id", trace_id)
+                response.headers.setdefault("traceparent", f"00-{trace_id}-{span_id}-01")
+            except Exception:
+                pass
+
+            return response
+        except Exception:
+            duration_ms = int((perf_counter() - start) * 1000)
+            extra = {
+                "route": request.url.path,
+                "method": request.method,
+                "status_code": 500,
+                "duration_ms": duration_ms,
+                "client_ip": request.client.host if request.client else None,
+                "trace_id": trace_id,
+                "span_id": span_id,
+            }
+            logging.exception("request.error", extra=extra)
+            raise
+
+
+app.add_middleware(RequestLoggingMiddleware)
+
+
+# Metrics middleware: count requests, duration, in-flight
+class PrometheusMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        path = request.url.path
+        method = request.method
+        metrics_module.IN_FLIGHT.inc()
+        start = perf_counter()
+        try:
+            response = await call_next(request)
+            status = getattr(response, "status_code", 500)
+            metrics_module.REQUEST_COUNT.labels(method=method, path=path, status_code=str(status)).inc()
+            metrics_module.REQUEST_DURATION.labels(method=method, path=path).observe((perf_counter() - start))
+            if status >= 500:
+                metrics_module.ERROR_COUNT.labels(method=method, path=path, status_code=str(status)).inc()
+            return response
+        finally:
+            metrics_module.IN_FLIGHT.dec()
+
+
+app.add_middleware(PrometheusMiddleware)
+
+# GZip compression for responses
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Simple in-memory rate limiter (configurable via RATE_LIMIT_REQS_PER_MIN)
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, window_seconds: int = 60, max_requests: int = 1000):
+        super().__init__(app)
+        self.window = window_seconds
+        self.max_requests = max_requests
+        self.store: dict[str, list[float]] = defaultdict(list)
+        self.lock = asyncio.Lock()
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        client = request.client.host if request.client else "unknown"
+        async with self.lock:
+            now = _time.time()
+            bucket = self.store[client]
+            # drop old
+            earliest = now - self.window
+            while bucket and bucket[0] < earliest:
+                bucket.pop(0)
+            if len(bucket) >= self.max_requests:
+                # rate limited
+                return JSONResponse(status_code=429, content={"state": "error", "reason": "rate_limited"})
+            bucket.append(now)
+        return await call_next(request)
+
+# Configure from env (default to high limit to avoid breaking tests)
+try:
+    rate_limit_per_min = int(os.getenv("RATE_LIMIT_REQS_PER_MIN", "1000"))
+except Exception:
+    rate_limit_per_min = 1000
+app.add_middleware(RateLimitMiddleware, window_seconds=60, max_requests=rate_limit_per_min)
+
+# Expose /metrics for Prometheus scraping
+@app.get("/metrics")
+def metrics():
+    return metrics_module.metrics_endpoint()
+
+
 # Global error handlers (fail-safe, don't expose internals)
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTPException with safe error format"""
+    extra = {
+        "route": request.url.path,
+        "method": request.method,
+        "status_code": exc.status_code,
+        "client_ip": request.client.host if request.client else None,
+    }
+    logging.warning(f"http.exception: {exc.detail}", extra=extra)
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -87,10 +242,17 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         }
     )
 
+
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle all other exceptions with generic safe message (don't expose stack trace)"""
-    logging.error(f"[ERROR] Unhandled exception: {exc.__class__.__name__}", exc_info=False)
+    extra = {
+        "route": request.url.path,
+        "method": request.method,
+        "status_code": 500,
+        "client_ip": request.client.host if request.client else None,
+    }
+    logging.error(f"Unhandled exception: {exc.__class__.__name__}", exc_info=True, extra=extra)
     return JSONResponse(
         status_code=500,
         content={
@@ -107,82 +269,121 @@ def test_cors():
     return {"message": "CORS is working!"}
 
 
-# Health check endpoints for production (Fly.io)
 @app.get("/health")
 def health_check():
-    """Liveness probe: service is running"""
+    """_summary_: Endpoint de health check simples que retorna um status "ok" e o nome do serviço. Este endpoint é útil para monitoramento básico da saúde da aplicação, permitindo que sistemas de monitoramento ou orquestração verifiquem se a API está respondendo corretamente sem realizar verificações mais complexas, como conectividade com o banco de dados ou presença de tabelas críticas.
+
+    Returns:
+        _type_: _description_
+    """
     return {"status": "ok", "service": "dashboard-backend"}
+
+
+@app.get("/health/live")
+def health_live():
+    """Liveness probe: apenas confirma que a aplicação responde."""
+    from datetime import datetime
+    return {
+        "status": "alive",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
 
 
 @app.get("/readiness")
 def readiness_check():
-    """Readiness probe: service is ready to accept traffic (DB + schema verified)"""
-    started_at = perf_counter()
+    """_summary_: métrica de readiness que verifica a conectividade com o banco de dados e a presença de tabelas críticas, retornando um status detalhado sobre a prontidão do serviço. O endpoint é útil para monitoramento e orquestração em ambientes de produção, permitindo que sistemas como Kubernetes ou Fly.io determinem se a aplicação está pronta para receber tráfego ou se deve ser reiniciada ou mantida em espera até que os requisitos de prontidão sejam atendidos.
 
-    # 1) Connection + query check with bounded retries for transient failures.
-    query_error_name = None
-    for attempt in range(1, 4):
-        try:
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            query_error_name = None
-            break
-        except Exception as exc:
-            query_error_name = exc.__class__.__name__
-            logging.error(
-                "[READINESS] DB query failed (attempt %s/3): %s",
-                attempt,
-                query_error_name,
-                exc_info=False,
-            )
+    Returns:
+        _type_: _description_
+    """
+    result = check_database_readiness(max_attempts=3, retry_delay_seconds=0.25, slow_threshold_ms=300.0)
 
-    latency_ms = round((perf_counter() - started_at) * 1000, 2)
+    if result["ready"]:
+        return {
+            "status": "ready",
+            "database": "ok",
+            "schema": "ok",
+            "latency_ms": result["latency_ms"],
+            "reason": "ok",
+        }
 
-    if query_error_name is not None:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "not_ready",
-                "database": "failed",
-                "schema": "failed",
-                "latency_ms": latency_ms,
-                "reason": "db_query_error",
-            },
-        )
+    logging.error(
+        "[READINESS] not ready host=%s reason=%s error=%s latency_ms=%s",
+        result.get("db_host", "unknown"),
+        result.get("reason", "db_error"),
+        result.get("error_name", "unknown"),
+        result.get("latency_ms", 0),
+        exc_info=False,
+    )
+    return JSONResponse(
+        status_code=503,
+        content={
+            "status": "not_ready",
+            "database": result.get("database", "failed"),
+            "schema": result.get("schema", "failed"),
+            "latency_ms": result.get("latency_ms", 0),
+            "reason": result.get("reason", "db_error"),
+        },
+    )
 
-    # 2) Schema check on a fresh short-lived connection.
+
+@app.get('/health/ready')
+def health_ready():
+    """Readiness probe: verifica banco, dependências externas críticas e variáveis essenciais."""
+    from datetime import datetime
+    import time
+    start = perf_counter()
+
+    checks = {}
+
+    # 1) Database readiness
+    db_result = check_database_readiness(max_attempts=2, retry_delay_seconds=0.1, slow_threshold_ms=500.0)
+    checks["database"] = {"ready": bool(db_result.get("ready")), "latency_ms": db_result.get("latency_ms")}
+
+    # 2) External dependency quick check (DummyJSON or MARKETSTACK if configured)
+    external_ok = True
+    external_reason = None
     try:
-        with engine.connect() as conn:
-            has_products_table = inspect(conn).has_table("products")
+        import requests
+        market_key = os.getenv("MARKETSTACK_API_KEY", "").strip()
+        if market_key:
+            url = os.getenv("MARKETSTACK_BASE_URL", "https://api.marketstack.com/v1/eod")
+            resp = requests.get(url, params={"access_key": market_key}, timeout=2)
+            external_ok = resp.status_code == 200
+            if not external_ok:
+                external_reason = f"status_{resp.status_code}"
+        else:
+            url = os.getenv("DUMMYJSON_URL", "https://dummyjson.com/products")
+            resp = requests.head(url, timeout=2)
+            external_ok = resp.status_code < 400
+            if not external_ok:
+                external_reason = f"status_{resp.status_code}"
+    except Exception as exc:
+        external_ok = False
+        external_reason = str(exc.__class__.__name__)
 
-        if not has_products_table:
-            logging.error("[READINESS] Schema check failed: missing table 'products'", exc_info=False)
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "not_ready",
-                    "database": "ok",
-                    "schema": "failed",
-                    "latency_ms": latency_ms,
-                    "reason": "missing_products_table",
-                },
-            )
+    checks["external_api"] = {"ready": external_ok, "reason": external_reason}
 
-        return {"status": "ready", "database": "ok", "schema": "ok", "latency_ms": latency_ms}
-    except Exception as e:
-        logging.error(f"[READINESS] Schema check failed: {e.__class__.__name__}", exc_info=False)
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "not_ready",
-                "database": "ok",
-                "schema": "failed",
-                "latency_ms": latency_ms,
-                "reason": "schema_check_error",
-            },
-        )
+    # 3) Required env vars presence (quick check)
+    required = ["DATABASE_URL", "CORS_ORIGINS"]
+    missing = [k for k in required if not os.getenv(k)]
+    checks["env"] = {"missing": missing}
+
+    duration_ms = int((perf_counter() - start) * 1000)
+
+    overall_ok = db_result.get("ready") and external_ok and not missing
+
+    payload = {
+        "status": "ready" if overall_ok else "not_ready",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "checks": checks,
+        "duration_ms": duration_ms,
+    }
+
+    return JSONResponse(status_code=200 if overall_ok else 503, content=payload)
 
 
+# Health check endpoints for production (Fly.io)
 def _get_period_reference_date(db):
     """_summary_: Obtém a data de referência para o cálculo do período, que é a data mais recente presente no banco de dados. Se não houver registros com data válida, retorna a data atual. Essa função é útil para garantir que os cálculos de período sejam baseados na data mais recente disponível nos dados, proporcionando uma referência consistente para filtros de período como "30d", "90d", etc.
 
@@ -427,6 +628,9 @@ async def get_overview(
     status: str = Query(default="all"),
     search: str = Query(default=""),
 ):
+    # Sanitização defensiva: limitar tamanho de parâmetros de busca
+    if search and len(search) > 200:
+        search = search[:200]
     """_summary_: Endpoint de overview; no estado atual retorna sem aplicar filtros recebidos.
 
     Args:
@@ -491,6 +695,9 @@ async def get_sales(
     status: str = Query(default="all"),
     search: str = Query(default=""),
 ):
+    # Sanitização defensiva: limitar tamanho de parâmetros de busca
+    if search and len(search) > 200:
+        search = search[:200]
     """_summary_: [DEPRECATED] Use /api/sales/monthly instead. 
     Endpoint de vendas com contrato padronizado: {state, data, reason}.
 

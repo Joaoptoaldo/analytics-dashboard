@@ -40,10 +40,14 @@ def _reset_rate_limit_state():
         db.close()
 
 
-def test_sync_access_allows_when_token_not_configured(monkeypatch: pytest.MonkeyPatch):
+def test_sync_access_blocks_when_token_not_configured(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("EXTERNAL_SYNC_TOKEN", raising=False)
     request = _build_request()
-    external_sync._enforce_sync_access(request)
+
+    with pytest.raises(HTTPException) as error:
+        external_sync._enforce_sync_access(request)
+
+    assert error.value.status_code == 500
 
 
 def test_sync_access_rejects_invalid_token(monkeypatch: pytest.MonkeyPatch):

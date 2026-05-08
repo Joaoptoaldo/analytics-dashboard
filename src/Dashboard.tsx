@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSWRConfig } from 'swr'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -91,6 +91,15 @@ export default function Dashboard() {
   const [syncLoading, setSyncLoading] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncSuccess, setSyncSuccess] = useState(false)
+  const syncSuccessTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (syncSuccessTimerRef.current !== null) {
+        window.clearTimeout(syncSuccessTimerRef.current)
+      }
+    }
+  }, [])
 
   const onSyncExternal = async () => {
     setSyncLoading(true)
@@ -116,7 +125,10 @@ export default function Dashboard() {
       setSyncError(syncException instanceof Error ? syncException.message : 'Erro desconhecido')
     } finally {
       setSyncLoading(false)
-      setTimeout(() => setSyncSuccess(false), 2000)
+      if (syncSuccessTimerRef.current !== null) {
+        window.clearTimeout(syncSuccessTimerRef.current)
+      }
+      syncSuccessTimerRef.current = window.setTimeout(() => setSyncSuccess(false), 2000)
     }
   }
 
@@ -189,7 +201,7 @@ export default function Dashboard() {
     return 2
   }, [salesTrendRange])
 
-  const formatTick = (value: string, range: string) => {
+  const formatTick = (value: string) => {
     try {
       const d = new Date(value)
       if (isNaN(d.getTime())) return value
@@ -232,6 +244,7 @@ export default function Dashboard() {
             : '30 dias'
   const pieColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6']
   const RADIAN = Math.PI / 180
+  const canSyncExternal = Boolean(SYNC_TOKEN)
 
   const formatPercentChange = (value?: number | null) => {
     if (value === null || value === undefined || Number.isNaN(value)) return 'sem comparação'
@@ -284,9 +297,9 @@ export default function Dashboard() {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle>Filtros</CardTitle>
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                <Button variant="outline" onClick={onSyncExternal} disabled={syncLoading}>
+                <Button variant="outline" onClick={onSyncExternal} disabled={syncLoading || !canSyncExternal}>
                   {syncLoading && <Spinner />}
-                  {syncLoading ? 'Sincronizando...' : syncSuccess ? 'Sincronizado!' : 'Sincronizar API externa'}
+                  {syncLoading ? 'Sincronizando...' : syncSuccess ? 'Sincronizado!' : canSyncExternal ? 'Sincronizar API externa' : 'Sync desabilitado'}
                 </Button>
                 {syncError && <span className="text-xs text-destructive">{syncError}</span>}
                 <Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
@@ -423,9 +436,14 @@ export default function Dashboard() {
                     <CartesianGrid strokeDasharray="3 3" />
                     {/** componente de tick rotacionado para evitar sobreposição */}
                     {(() => {
-                      const RotatedTick = (props: any) => {
-                        const { x, y, payload } = props
-                        const label = formatTick(String(payload?.value ?? ''), salesTrendRange)
+                      type RotatedTickProps = {
+                        x?: number
+                        y?: number
+                        payload?: { value?: string | number }
+                      }
+
+                      const RotatedTick = ({ x = 0, y = 0, payload }: RotatedTickProps) => {
+                        const label = formatTick(String(payload?.value ?? ''))
                         const ty = y + 12
                         return (
                           <text x={x} y={ty} transform={`rotate(-20 ${x} ${ty})`} textAnchor="end" fontSize={11}>

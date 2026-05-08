@@ -365,13 +365,13 @@ def get_top_products(limit: int = 10) -> dict:
 
 
 def get_ticket_average() -> dict:
-    """_summary_: Calcula a RECEITA MÉDIA mensal (AVG de revenue por mês), NÃO é ticket real.
+    """_summary_: Calcula o TICKET REAL mensal = SUM(revenue) / COUNT(DISTINCT client).
     
-    NOTA: "client" no banco representa nome do produto, não cliente. O cálculo retorna AVG(revenue).
-    Para calcular ticket real seria necessário: SUM(revenue) / COUNT(distinct customers).
+    O ticket real representa a receita média por cliente único no mês.
+    Fórmula: Ticket Real = SUM(revenue) / COUNT(DISTINCT clients)
 
     Returns:
-        dict: _description_: Resposta padronizada com `state` e `data`. Quando `valid`, cada item contem `month`, `avg_ticket`, `orders` e `date_source`.
+        dict: _description_: Resposta padronizada com `state` e `data`. Quando `valid`, cada item contem `month`, `avg_ticket` (ticket real), `distinct_clients`, `orders` e `date_source`.
     """
     db = SessionLocal()
     try:
@@ -390,7 +390,8 @@ def get_ticket_average() -> dict:
         rows = (
             db.query(
                 month_expr.label("month"),
-                func.avg(Product.revenue).label("avg_ticket"),
+                func.sum(Product.revenue).label("total_revenue"),
+                func.count(func.distinct(Product.client)).label("distinct_clients"),
                 func.count(Product.id).label("orders"),
             )
             .filter(Product.date.isnot(None))
@@ -407,7 +408,10 @@ def get_ticket_average() -> dict:
         data = [
             {
                 "month": row.month,
-                "avg_ticket": round(float(row.avg_ticket), 2) if row.avg_ticket is not None else None,
+                "avg_ticket": round(
+                    float(row.total_revenue) / int(row.distinct_clients), 2
+                ) if (row.total_revenue is not None and row.distinct_clients and row.distinct_clients > 0) else None,
+                "distinct_clients": int(row.distinct_clients) if row.distinct_clients is not None else 0,
                 "orders": int(row.orders) if row.orders is not None else None,
                 "date_source": DATE_SOURCE,
             }

@@ -12,9 +12,9 @@ def get_products_router(
     category: str = Query(default="all"),
     region: str = Query(default="all"),
     status: str = Query(default="all"),
-    search: str = Query(default=""),
+    search: str = Query(default="", max_length=100),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=8, ge=1, le=1000),
+    page_size: int = Query(default=8, ge=1, le=100),
     sort_by: str = Query(default="date"),
     sort_order: str = Query(default="desc"),
 ):

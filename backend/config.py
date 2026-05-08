@@ -24,11 +24,9 @@ BOOT_ENV = os.getenv("ENV", "").lower().strip()
 if BOOT_ENV != "production":
     load_dotenv()
 
-# Configurar logging ANTES de tudo
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s][%(levelname)s] %(message)s"
-)
+# Configurar logging estruturado ANTES de validar config
+from backend.logging_config import configure_logging
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # ============================================================================

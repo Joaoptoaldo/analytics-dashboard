@@ -32,6 +32,8 @@ def get_products_service(period, category, region, status, search, page, page_si
     """
     allowed_sort = ["id", "client", "revenue", "date", "category"]
     sort_field = sort_by if sort_by in allowed_sort else "date"
+    page_size = max(1, min(page_size, 100))
+    page = max(1, page)
 
     if region != "all":
         logging.warning("[DEPRECATED] region filter ignored")
