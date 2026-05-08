@@ -3,7 +3,7 @@
   "passed": 23,
   "failed": 1,
   "warnings": 0,
-  "duration_seconds": 2.348542,
+  "duration_seconds": 11.532777,
   "verdict": "NOT READY",
   "failed_tests": [
     {
@@ -11,7 +11,7 @@
       "passed": false,
       "message": "Returns 500 (expected 401) without token",
       "severity": "error",
-      "timestamp": "2026-05-05T14:46:06.776836"
+      "timestamp": "2026-05-08T12:20:36.465710"
     }
   ],
   "warnings_list": []

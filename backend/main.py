@@ -296,9 +296,27 @@ def readiness_check():
     Returns:
         _type_: _description_
     """
+    started_at = perf_counter()
     result = check_database_readiness(max_attempts=3, retry_delay_seconds=0.25, slow_threshold_ms=300.0)
+    endpoint_duration_ms = int((perf_counter() - started_at) * 1000)
 
     if result["ready"]:
+        metrics_module.record_readiness(
+            endpoint="readiness",
+            ready=True,
+            duration_ms=endpoint_duration_ms,
+            dependencies={"database": True, "schema": True},
+        )
+        logging.info(
+            "readiness.ok",
+            extra={
+                "route": "/readiness",
+                "status_code": 200,
+                "duration_ms": endpoint_duration_ms,
+                "database": "ok",
+                "schema": "ok",
+            },
+        )
         return {
             "status": "ready",
             "database": "ok",
@@ -307,13 +325,26 @@ def readiness_check():
             "reason": "ok",
         }
 
-    logging.error(
-        "[READINESS] not ready host=%s reason=%s error=%s latency_ms=%s",
-        result.get("db_host", "unknown"),
-        result.get("reason", "db_error"),
-        result.get("error_name", "unknown"),
-        result.get("latency_ms", 0),
-        exc_info=False,
+    metrics_module.record_readiness(
+        endpoint="readiness",
+        ready=False,
+        duration_ms=endpoint_duration_ms,
+        dependencies={
+            "database": result.get("database") == "ok",
+            "schema": result.get("schema") == "ok",
+        },
+    )
+    logging.warning(
+        "readiness.not_ready",
+        extra={
+            "route": "/readiness",
+            "status_code": 503,
+            "duration_ms": endpoint_duration_ms,
+            "db_host": result.get("db_host", "unknown"),
+            "reason": result.get("reason", "db_error"),
+            "error_name": result.get("error_name", "unknown"),
+            "latency_ms": result.get("latency_ms", 0),
+        },
     )
     return JSONResponse(
         status_code=503,
@@ -379,6 +410,30 @@ def health_ready():
         "checks": checks,
         "duration_ms": duration_ms,
     }
+
+    metrics_module.record_readiness(
+        endpoint="health_ready",
+        ready=bool(overall_ok),
+        duration_ms=duration_ms,
+        dependencies={
+            "database": bool(db_result.get("ready")),
+            "external_api": bool(external_ok),
+            "env": not bool(missing),
+        },
+    )
+
+    log_method = logging.info if overall_ok else logging.warning
+    log_method(
+        "health.ready" if overall_ok else "health.not_ready",
+        extra={
+            "route": "/health/ready",
+            "status_code": 200 if overall_ok else 503,
+            "duration_ms": duration_ms,
+            "database_ready": bool(db_result.get("ready")),
+            "external_ready": bool(external_ok),
+            "missing_env": ",".join(missing) if missing else "",
+        },
+    )
 
     return JSONResponse(status_code=200 if overall_ok else 503, content=payload)
 
@@ -535,10 +590,14 @@ def _build_sales_db(db, period="all", category="all", status="all", search=""):
     if total == 0:
         logging.info(f"[KPI][SALES] Ignorados todos os registros: nenhum com date válido")
         return [{"state": "no_data", "month": None, "revenue": None, "orders": None, "customers": None, "reason": "no_valid_date"}]
-    # Agrupar por mês (YYYY-MM)
-    # Agrupar por mês (YYYY-MM)
+    # Agrupar por mês (YYYY-MM) com expressão compatível ao dialeto do banco.
+    month_expr = (
+        func.to_char(Product.date, 'YYYY-MM')
+        if (db.bind is not None and db.bind.dialect.name == 'postgresql')
+        else func.strftime('%Y-%m', Product.date)
+    )
     results = filtered_query.with_entities(
-        func.strftime('%Y-%m', Product.date).label('month'),
+        month_expr.label('month'),
         func.sum(Product.revenue).label('revenue'),
         func.count(Product.id).label('orders'),
         func.count(distinct(Product.client)).label('customers')

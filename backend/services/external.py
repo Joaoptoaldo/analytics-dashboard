@@ -54,6 +54,10 @@ def _normalize_recent_date(raw_date: Optional[datetime.date], key: int, referenc
     if raw_date is None:
         return _deterministic_recent_date(key, reference_date=anchor)
 
+    # Alguns provedores/consumidores podem entregar datetime; normaliza para date.
+    if isinstance(raw_date, datetime):
+        raw_date = raw_date.date()
+
     cutoff = anchor - timedelta(days=RECENT_DATA_WINDOW_DAYS)
     if raw_date < cutoff or raw_date > anchor:
         return _deterministic_recent_date(key, reference_date=anchor)

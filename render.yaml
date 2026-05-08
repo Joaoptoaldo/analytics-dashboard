@@ -12,6 +12,20 @@ services:
         value: production
       - key: ALLOW_SEED
         value: "false"
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
+      - key: DB_POOL_TIMEOUT_SECONDS
+        value: "30"
+      - key: DB_POOL_RECYCLE_SECONDS
+        value: "1800"
+      - key: DB_CONNECT_TIMEOUT_SECONDS
+        value: "5"
+      - key: DB_STATEMENT_TIMEOUT_MS
+        value: "5000"
       - key: DATABASE_URL
         fromSecret: DATABASE_URL
       - key: CORS_ORIGINS

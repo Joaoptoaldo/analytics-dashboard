@@ -26,6 +26,9 @@ class _NoOpMetric:
     def observe(self, *args, **kwargs):
         return None
 
+    def set(self, *args, **kwargs):
+        return None
+
 
 if PROM_AVAILABLE:
     REQUEST_COUNT = Counter(
@@ -39,12 +42,51 @@ if PROM_AVAILABLE:
         ["method", "path"],
     )
     IN_FLIGHT = Gauge("http_in_flight_requests", "In-flight HTTP requests")
-    ERROR_COUNT = Counter("http_errors_total", "Total HTTP errors", ["method", "path", "status_code"]) 
+    ERROR_COUNT = Counter("http_errors_total", "Total HTTP errors", ["method", "path", "status_code"])
+    READINESS_STATUS = Gauge(
+        "service_readiness_status",
+        "Readiness status (1=ready, 0=not_ready)",
+        ["endpoint"],
+    )
+    DEPENDENCY_STATUS = Gauge(
+        "service_dependency_status",
+        "Dependency status (1=healthy, 0=unhealthy)",
+        ["endpoint", "dependency"],
+    )
+    HEALTHCHECK_DURATION = Histogram(
+        "healthcheck_duration_seconds",
+        "Healthcheck duration in seconds",
+        ["endpoint"],
+    )
 else:
     REQUEST_COUNT = _NoOpMetric()
     REQUEST_DURATION = _NoOpMetric()
     IN_FLIGHT = _NoOpMetric()
     ERROR_COUNT = _NoOpMetric()
+    READINESS_STATUS = _NoOpMetric()
+    DEPENDENCY_STATUS = _NoOpMetric()
+    HEALTHCHECK_DURATION = _NoOpMetric()
+
+
+def record_readiness(endpoint: str, ready: bool, duration_ms: float | int | None = None, dependencies: dict[str, bool] | None = None) -> None:
+    """Atualiza métricas operacionais de readiness/dependências sem impactar o fluxo da API."""
+    try:
+        READINESS_STATUS.labels(endpoint=endpoint).set(1 if ready else 0)
+    except Exception:
+        logging.exception("Failed to record readiness status")
+
+    if duration_ms is not None:
+        try:
+            HEALTHCHECK_DURATION.labels(endpoint=endpoint).observe(max(float(duration_ms), 0.0) / 1000.0)
+        except Exception:
+            logging.exception("Failed to record healthcheck duration")
+
+    if dependencies:
+        for dep_name, dep_ok in dependencies.items():
+            try:
+                DEPENDENCY_STATUS.labels(endpoint=endpoint, dependency=dep_name).set(1 if dep_ok else 0)
+            except Exception:
+                logging.exception("Failed to record dependency status")
 
 
 def metrics_endpoint():

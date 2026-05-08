@@ -42,6 +42,7 @@ htmlcov/
 # Database files and snapshots
 backend.db
 *.sqlite3
+.db
 *.db
 backend/*.db
 audit_*.db
@@ -51,6 +52,7 @@ audit_*.db
 *.zip
 *.tar
 *.gz
+*.tar.gz
 
 # Pip audit reports and logs
 pip_audit_*.json

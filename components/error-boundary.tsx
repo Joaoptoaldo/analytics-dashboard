@@ -11,6 +11,10 @@ type ErrorBoundaryState = {
   hasError: boolean
 }
 
+type SentryCaptureModule = {
+  captureException?: (error: unknown) => void
+}
+
 export class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false }
 
@@ -22,11 +26,10 @@ export class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundar
     console.error('Unhandled UI error', error)
     try {
       // Capture with Sentry if available (optional dependency)
-      // @ts-ignore: optional dependency — import via Function to avoid bundler resolving optional package at build-time
       try {
         const dynImport = new Function('p', 'return import(p)')
         dynImport('@sentry/react')
-          .then((Sentry: any) => {
+          .then((Sentry: SentryCaptureModule) => {
             if (Sentry && typeof Sentry.captureException === 'function') {
               Sentry.captureException(error)
             }

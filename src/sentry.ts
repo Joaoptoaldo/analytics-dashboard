@@ -1,11 +1,19 @@
-// @ts-nocheck
 const dsn = import.meta.env.VITE_SENTRY_DSN || ""
+
+type SentryModule = {
+  init: (options: Record<string, unknown>) => void
+}
+
+type TracingModule = {
+  BrowserTracing: new () => unknown
+}
+
 if (dsn) {
   (async () => {
     try {
       const dynImport = new Function('p', 'return import(p)')
-      const Sentry = await dynImport('@sentry/react')
-      const Tracing = await dynImport('@sentry/tracing')
+      const Sentry = await dynImport('@sentry/react') as SentryModule
+      const Tracing = await dynImport('@sentry/tracing') as TracingModule
       Sentry.init({
         dsn,
         integrations: [new Tracing.BrowserTracing()],
@@ -15,9 +23,8 @@ if (dsn) {
         profilesSampleRate: Number(import.meta.env.VITE_SENTRY_PROFILES_SAMPLE_RATE || 0),
       })
       // export is not necessary for runtime usage
-    } catch (e) {
+    } catch {
       // ignore if packages not installed or import fails
-      // console.warn('Sentry init failed', e)
     }
   })()
 }
