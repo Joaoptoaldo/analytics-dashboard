@@ -4,6 +4,7 @@ from sqlalchemy import asc, desc, or_
 from backend.db import SessionLocal
 from backend.models.product import Product
 from backend.schemas.products import ProductItem, ProductsResponse
+from backend.services.date_windows import apply_period_window
 
 
 def _get_period_reference_date(db) -> date:
@@ -46,9 +47,7 @@ def get_products_service(period, category, region, status, search, page, page_si
         if period != "all":
             days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
             days = days_map.get(period, 365)
-            reference_date = _get_period_reference_date(db)
-            min_date = reference_date - timedelta(days=days)
-            query = query.filter(Product.date >= min_date)
+            query, _, _ = apply_period_window(query, days)
         if category != "all":
             query = query.filter(Product.category == category)
         if status != "all":

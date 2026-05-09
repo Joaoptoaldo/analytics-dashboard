@@ -162,7 +162,9 @@ export default function Dashboard() {
     }
 
     return (salesTrend || []).map((item) => {
-      const date = new Date(item.period)
+      // Parse date correctly handling timezone (avoid UTC interpretation)
+      const [year, month, day] = item.period.split('-')
+      const date = new Date(Number(year), Number(month) - 1, Number(day))
       return {
         period: item.period,
         label: Number.isNaN(date.getTime())
@@ -179,6 +181,16 @@ export default function Dashboard() {
   }, [period, salesMonthly, salesTrend])
   const activeSalesTrendState = period === 'all' ? salesMonthlyState : salesTrendState
   const activeSalesTrendReason = period === 'all' ? salesMonthlyReason : salesTrendReason
+  const hasLoadedInitialData = Boolean(
+    overview ||
+    salesMonthly ||
+    salesTrend ||
+    categoryDistribution ||
+    topProducts ||
+    products ||
+    filterOptions,
+  )
+  const isRefetching = isLoading && hasLoadedInitialData
   const salesTrendXAxisInterval = useMemo(() => {
     if (salesTimelineData.length <= 6) return 0
     return Math.max(Math.floor(salesTimelineData.length / 8), 0)
@@ -192,7 +204,9 @@ export default function Dashboard() {
       maximumFractionDigits: 2,
     }).format(Number.isFinite(value ?? NaN) ? Number(value) : 0)
 
-  if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>
+  if (isLoading && !hasLoadedInitialData) {
+    return <div className="flex h-screen items-center justify-center">Carregando...</div>
+  }
   if (error) {
     return (
       <ErrorMessage
@@ -270,6 +284,9 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-6 text-slate-950 lg:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Dashboard Analytics</h1>
+        {isRefetching ? (
+          <div className="text-xs text-muted-foreground">Atualizando dados filtrados...</div>
+        ) : null}
 
         <Card className="shadow-sm">
           <CardHeader>
@@ -415,15 +432,15 @@ export default function Dashboard() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="label"
-                      interval={salesTrendXAxisInterval}
-                      minTickGap={18}
+                      minTickGap={50}
                       tick={({ x = 0, y = 0, payload }) => {
                         const ty = y + 12
-                        return (
+                        const text = String(payload?.value ?? '')
+                        return text ? (
                           <text x={x} y={ty} transform={`rotate(-20 ${x} ${ty})`} textAnchor="end" fontSize={11}>
-                            {String(payload?.value ?? '')}
+                            {text}
                           </text>
-                        )
+                        ) : null
                       }}
                     />
                     <YAxis tickFormatter={(value) => formatMoney(Number(value))} />

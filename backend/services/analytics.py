@@ -6,6 +6,7 @@ from sqlalchemy import desc, func, nullslast
 
 from backend.db import SessionLocal
 from backend.models.product import Product
+from backend.services.date_windows import get_reference_date
 
 DATE_SOURCE = "external.meta.createdAt"
 TREND_RANGE_DAYS = {
@@ -52,6 +53,24 @@ def _month_bucket_expr(db):
     if dialect_name == "postgresql":
         return func.to_char(Product.date, "YYYY-MM")
     return func.strftime("%Y-%m", Product.date)
+
+
+def _month_start(day: date) -> date:
+    return date(day.year, day.month, 1)
+
+
+def _next_month_start(day: date) -> date:
+    if day.month == 12:
+        return date(day.year + 1, 1, 1)
+    return date(day.year, day.month + 1, 1)
+
+
+def _iter_month_starts(start_day: date, end_day: date):
+    current = _month_start(start_day)
+    last = _month_start(end_day)
+    while current <= last:
+        yield current
+        current = _next_month_start(current)
 
 
 def _trend_bucket_start(day: date, range_value: str) -> date:
@@ -110,16 +129,9 @@ def get_sales_monthly(period: str = "all", category: str = "all", status: str = 
     """
     db = SessionLocal()
     try:
-        # build base query and apply filters (period, category, status, search)
+        # build base query and apply filters (category, status, search)
         # Always exclude synthetic (test) data by default
         base_query = db.query(Product).filter(Product.date.isnot(None), Product.is_synthetic == False)
-        if period != "all":
-            days_map = {"30d": 30, "90d": 90, "180d": 180, "1y": 365, "365d": 365}
-            days = days_map.get(period, 365)
-            latest_date = db.query(func.max(Product.date)).scalar()
-            if latest_date is not None:
-                min_date = latest_date - timedelta(days=days - 1)
-                base_query = base_query.filter(Product.date >= min_date)
         if category != "all":
             base_query = base_query.filter(Product.category == category)
         if status != "all":
@@ -136,9 +148,23 @@ def get_sales_monthly(period: str = "all", category: str = "all", status: str = 
             logging.info("[ANALYTICS][sales/monthly] no_data: no records with valid date")
             return _response("no_data", reason="no_valid_date")
 
+        reference_date = get_reference_date(db)
+        series_start: date
+        filtered_query = base_query
+
+        if period != "all":
+            days_map = {"30d": 30, "90d": 90, "180d": 180, "1y": 365, "365d": 365}
+            days = days_map.get(period, 365)
+            period_start = reference_date - timedelta(days=days - 1)
+            series_start = _month_start(period_start)
+            filtered_query = filtered_query.filter(Product.date >= period_start, Product.date <= reference_date)
+        else:
+            first_date = filtered_query.with_entities(func.min(Product.date)).scalar() or reference_date
+            series_start = _month_start(first_date)
+
         month_expr = _month_bucket_expr(db)
         rows = (
-            base_query.with_entities(
+            filtered_query.with_entities(
                 month_expr.label("month"),
                 func.sum(Product.revenue).label("revenue"),
                 func.count(Product.id).label("orders"),
@@ -149,18 +175,16 @@ def get_sales_monthly(period: str = "all", category: str = "all", status: str = 
         )
         logging.info(f"[ANALYTICS][sales/monthly] rows after grouping: {len(rows)}")
 
-        if not rows:
-            logging.info("[ANALYTICS][sales/monthly] no_data: grouped query returned no rows")
-            return _response("no_data", reason="no_grouped_rows")
-
+        grouped_rows = {row.month: row for row in rows}
         data = [
             {
-                "month": row.month,
-                "revenue": float(row.revenue) if row.revenue is not None else None,
-                "orders": int(row.orders) if row.orders is not None else None,
+                "month": month_start.strftime("%Y-%m"),
+                "revenue": float(row.revenue) if row is not None and row.revenue is not None else 0.0,
+                "orders": int(row.orders) if row is not None and row.orders is not None else 0,
                 "date_source": DATE_SOURCE,
             }
-            for row in rows
+            for month_start in _iter_month_starts(series_start, reference_date)
+            for row in [grouped_rows.get(month_start.strftime("%Y-%m"))]
         ]
         return _response("valid", data=data)
     except Exception as exc:
@@ -187,13 +211,6 @@ def get_sales_trend(range_value: str = "30d", period: str = "all", category: str
 
     
         base_query = db.query(Product.date.label("date"), Product.revenue.label("revenue")).filter(Product.date.isnot(None)).filter(Product.revenue.isnot(None)).filter(Product.is_synthetic == False)
-        if period != "all":
-            days_map = {"30d": 30, "90d": 90, "180d": 180, "1y": 365, "365d": 365}
-            days = days_map.get(period, 365)
-            latest_date = db.query(func.max(Product.date)).scalar()
-            if latest_date is not None:
-                min_date = latest_date - timedelta(days=days - 1)
-                base_query = base_query.filter(Product.date >= min_date)
         if category != "all":
             base_query = base_query.filter(Product.category == category)
         if status != "all":
@@ -213,14 +230,17 @@ def get_sales_trend(range_value: str = "30d", period: str = "all", category: str
             logging.info("[ANALYTICS][sales/trend] no_data: date list is empty after filtering")
             return {"state": "no_data", "range": range_value, "reason": "no_valid_data_in_range", "data": []}
 
-        latest_date = max(dates)
+        # Sempre ancorar em hoje para manter a data do eixo atualizada.
+        reference_date = get_reference_date(db)
         window_days = TREND_RANGE_DAYS[range_value]
-        cutoff_date = latest_date - timedelta(days=window_days - 1)
+        cutoff_date = reference_date - timedelta(days=window_days - 1)
+        end_date = reference_date
+
         buckets: dict[date, dict[str, float | int]] = defaultdict(lambda: {"revenue": 0.0, "orders": 0})
         for row in rows:
             if row.date is None:
                 continue
-            if row.date < cutoff_date or row.date > latest_date:
+            if row.date < cutoff_date or row.date > end_date:
                 continue
 
             bucket_start = _trend_bucket_start(row.date, range_value)
@@ -228,12 +248,8 @@ def get_sales_trend(range_value: str = "30d", period: str = "all", category: str
             bucket["revenue"] = float(bucket["revenue"] or 0.0) + float(row.revenue or 0.0)
             bucket["orders"] = int(bucket["orders"] or 0) + 1
 
-        if not buckets:
-            logging.info("[ANALYTICS][sales/trend] no_data: no rows inside selected range")
-            return {"state": "no_data", "range": range_value, "reason": "no_valid_data_in_range", "data": []}
-
         start_bucket = cutoff_date
-        end_bucket = latest_date
+        end_bucket = end_date
         data = []
         current_bucket = start_bucket
         while current_bucket <= end_bucket:

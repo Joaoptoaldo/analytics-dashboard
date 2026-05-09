@@ -31,6 +31,7 @@ import time as _time
 from collections import defaultdict
 from backend.logging_config import set_request_id, get_request_id, set_trace_id, set_span_id, get_trace_id, get_span_id
 from backend import metrics as metrics_module
+from backend.services.date_windows import apply_period_window
 
 
 app = FastAPI(title="Analytics Dashboard API", version="1.0.0")
@@ -482,9 +483,7 @@ def _apply_db_filters(query, period, category, status, search):
     if period != "all":
         days_map = {"30d": 30, "90d": 90, "180d": 180, "365d": 365}
         days = days_map.get(period, 365)
-        reference_date = _get_period_reference_date(query.session)
-        min_date = reference_date - timedelta(days=days)
-        query = query.filter(Product.date >= min_date)
+        query, _, _ = apply_period_window(query, days)
     
     if category != "all":
         query = query.filter(Product.category == category)
