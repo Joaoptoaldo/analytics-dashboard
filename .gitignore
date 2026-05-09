@@ -4,9 +4,12 @@ env
 .env.local
 env.local
 .env.*.local
-.env.production
 env.production
+.env.production
 .env.production.local
+env.production
+
+# QA environment secrets em teste
 .env.qa
 .env.qa.local
 
@@ -61,6 +64,27 @@ audit_*.db
 # pip audit reports 
 pip_audit_*.json
 pip_audit_report.json
+
+# QA, auditoria e relatórios de teste
+qa_*.json
+qa_*.txt
+qa_*.log
+QA_*.json
+QA_*.txt
+QA_*.log
+audit_*.json
+audit_*.txt
+AUDIT_*.json
+AUDIT_*.txt
+render_simulation*.json
+veredito*.txt
+VEREDITO*.txt
+conclusão*.txt
+CONCLUSÃO*.txt
+status*.txt
+STATUS*.txt
+
+# logs de aplicação
 *.log
 *.err.log
 backend.log
@@ -70,12 +94,24 @@ frontend.err.log
 frontend-static.log
 frontend-static.err.log
 logs/
+.logs/
+
+# backups e arquivos temporários
+backup*.py
+backup*.zip
+*.backup
+*.bak
 
 # IDE / editor
 .vscode
 .vscode/
 .idea/
 *.iml
+
+# audit_evidence — relatórios gerados dinamicamente (não source)
+audit_evidence/*.json
+audit_evidence/*.txt
+audit_evidence/*.log
 
 # Legacy / OS
 .next/

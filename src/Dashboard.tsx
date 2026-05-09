@@ -147,71 +147,50 @@ export default function Dashboard() {
     setSortOrder('desc')
   }
 
-  // preparar dados do gráfico antes de quaisquer retornos condicionais
-  const salesTrendData = useMemo(() => {
+  // preparar a série temporal com o mesmo significado visual dos filtros ativos
+  const salesTimelineData = useMemo(() => {
     if (period === 'all') {
-      const monthly = salesMonthly || []
-      return monthly.map((m) => ({ period: `${m.month}-01`, revenue: m.revenue, orders: m.orders }))
+      return (salesMonthly || []).map((item) => {
+        const [year, monthNumber] = item.month.split('-')
+        return {
+          period: item.month,
+          label: `${monthNumber}/${year}`,
+          revenue: item.revenue,
+          orders: item.orders,
+        }
+      })
     }
-    return salesTrend || []
+
+    return (salesTrend || []).map((item) => {
+      const date = new Date(item.period)
+      return {
+        period: item.period,
+        label: Number.isNaN(date.getTime())
+          ? item.period
+          : date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          }),
+        revenue: item.revenue,
+        orders: item.orders,
+      }
+    })
   }, [period, salesMonthly, salesTrend])
   const activeSalesTrendState = period === 'all' ? salesMonthlyState : salesTrendState
   const activeSalesTrendReason = period === 'all' ? salesMonthlyReason : salesTrendReason
-  const aggregatedSalesTrend = useMemo(() => {
-    if (!salesTrendData || salesTrendData.length === 0) return salesTrendData
-    if (salesTrendRange !== '90d') return salesTrendData
-
-    // agrupa por semanas (segunda-feira como início)
-    const map = new Map<string, { period: string; revenue: number; orders: number }>()
-    for (const p of salesTrendData) {
-      const date = new Date(p.period)
-      if (isNaN(date.getTime())) continue
-      const day = date.getDay()
-      const diffToMonday = (day + 6) % 7
-      const monday = new Date(date)
-      monday.setDate(date.getDate() - diffToMonday)
-      monday.setHours(0, 0, 0, 0)
-      const key = monday.toISOString().slice(0, 10)
-      const existing = map.get(key)
-      const revenue = Number(p.revenue || 0)
-      const orders = Number(p.orders || 0)
-      if (existing) {
-        existing.revenue += revenue
-        existing.orders += orders
-      } else {
-        map.set(key, { period: key, revenue, orders })
-      }
-    }
-
-    const arr = Array.from(map.values()).sort((a, b) => (a.period < b.period ? -1 : 1))
-    // formata period para dd/mm/YYYY para exibição
-    return arr.map((r) => ({
-      ...r, period: (() => {
-        const d = new Date(r.period)
-        const day = String(d.getDate()).padStart(2, '0')
-        const month = String(d.getMonth() + 1).padStart(2, '0')
-        return `${day}/${month}/${d.getFullYear()}`
-      })()
-    }))
-  }, [salesTrendData, salesTrendRange])
   const salesTrendXAxisInterval = useMemo(() => {
-    if (salesTrendRange === '1y') return 29
-    if (salesTrendRange === '180d') return 13
-    if (salesTrendRange === '90d') return 6
-    return 2
-  }, [salesTrendRange])
+    if (salesTimelineData.length <= 6) return 0
+    return Math.max(Math.floor(salesTimelineData.length / 8), 0)
+  }, [salesTimelineData.length])
 
-  const formatTick = (value: string) => {
-    try {
-      const d = new Date(value)
-      if (isNaN(d.getTime())) return value
-      const day = String(d.getDate()).padStart(2, '0')
-      const month = String(d.getMonth() + 1).padStart(2, '0')
-      return `${day}/${month}/${d.getFullYear()}`
-    } catch {
-      return value
-    }
-  }
+  const formatMoney = (value?: number | null) =>
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number.isFinite(value ?? NaN) ? Number(value) : 0)
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>
   if (error) {
@@ -292,7 +271,7 @@ export default function Dashboard() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Dashboard Analytics</h1>
 
-        <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+        <Card className="shadow-sm">
           <CardHeader>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle>Filtros</CardTitle>
@@ -367,16 +346,16 @@ export default function Dashboard() {
         </Card>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Receita Total</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">${overview?.total_revenue?.toLocaleString()}</div>
+              <div className="text-3xl font-bold">{formatMoney(overview?.total_revenue)}</div>
               <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.revenue_change)}</p>
             </CardContent>
           </Card>
-          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Total Pedidos</CardTitle>
             </CardHeader>
@@ -385,7 +364,7 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.orders_change)}</p>
             </CardContent>
           </Card>
-          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Clientes</CardTitle>
             </CardHeader>
@@ -394,7 +373,7 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">{formatPercentChange(overview?.customers_change)}</p>
             </CardContent>
           </Card>
-          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Conversão</CardTitle>
             </CardHeader>
@@ -406,10 +385,10 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+          <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <div>
-                <CardTitle>Vendas Temporais - {period === 'all' ? 'série mensal' : 'série diária'}</CardTitle>
+                <CardTitle>Vendas no tempo - série {period === 'all' ? 'mensal' : 'diária'}</CardTitle>
                 <p className="text-sm text-muted-foreground">Janela ativa: {salesTrendRangeLabel}</p>
               </div>
             </CardHeader>
@@ -421,7 +400,7 @@ export default function Dashboard() {
                     <EmptyDescription>O servidor retornou um erro ao consultar essa métrica.</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
-              ) : activeSalesTrendState !== 'valid' || salesTrendData.length <= 1 ? (
+              ) : activeSalesTrendState !== 'valid' || salesTimelineData.length <= 1 ? (
                 <Empty>
                   <EmptyHeader>
                     <EmptyTitle>Sem dados suficientes para a tendência</EmptyTitle>
@@ -432,31 +411,22 @@ export default function Dashboard() {
                 </Empty>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={salesTrendRange === '90d' ? aggregatedSalesTrend : salesTrendData}>
+                  <LineChart data={salesTimelineData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    {/** componente de tick rotacionado para evitar sobreposição */}
-                    {(() => {
-                      type RotatedTickProps = {
-                        x?: number
-                        y?: number
-                        payload?: { value?: string | number }
-                      }
-
-                      const RotatedTick = ({ x = 0, y = 0, payload }: RotatedTickProps) => {
-                        const label = formatTick(String(payload?.value ?? ''))
+                    <XAxis
+                      dataKey="label"
+                      interval={salesTrendXAxisInterval}
+                      minTickGap={18}
+                      tick={({ x = 0, y = 0, payload }) => {
                         const ty = y + 12
                         return (
                           <text x={x} y={ty} transform={`rotate(-20 ${x} ${ty})`} textAnchor="end" fontSize={11}>
-                            {label}
+                            {String(payload?.value ?? '')}
                           </text>
                         )
-                      }
-
-                      return (
-                        <XAxis dataKey="period" interval={salesTrendXAxisInterval} minTickGap={18} tick={<RotatedTick />} />
-                      )
-                    })()}
-                    <YAxis />
+                      }}
+                    />
+                    <YAxis tickFormatter={(value) => formatMoney(Number(value))} />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (!active || !payload?.length) return null
@@ -466,26 +436,21 @@ export default function Dashboard() {
 
                         return (
                           <div className="rounded-md border bg-background px-3 py-2 shadow-sm">
-                            <div className="text-xs text-muted-foreground">Período: {label}</div>
-                            <div className="text-sm font-medium">
-                              Receita: R$ {revenue.toLocaleString('pt-BR', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </div>
+                            <div className="text-xs text-muted-foreground">Período: {String(label)}</div>
+                            <div className="text-sm font-medium">Receita: {formatMoney(revenue)}</div>
                             <div className="text-xs text-muted-foreground">Pedidos: {orders}</div>
                           </div>
                         )
                       }}
                     />
-                    <Line type="linear" dataKey="revenue" stroke="#8884d8" strokeWidth={2.5} dot={false} connectNulls={false} />
+                    <Line type="linear" dataKey="revenue" stroke="#4f46e5" strokeWidth={2.5} dot={false} connectNulls={false} />
                   </LineChart>
                 </ResponsiveContainer>
               )}
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm transition-shadow duration-200 hover:shadow-md">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Distribuição por Categoria</CardTitle>
             </CardHeader>

@@ -49,8 +49,9 @@ def sync_to_remote():
         print(f"Found {len(local_products)} products locally. Syncing to remote...")
         count = 0
         for p in local_products:
-            if p.external_id:
-                existing = remote_db.query(Product).filter_by(external_id=p.external_id).first()
+            external_id = str(p.external_id) if p.external_id is not None else None
+            if external_id:
+                existing = remote_db.query(Product).filter_by(external_id=external_id).first()
             else:
                 existing = None
 
@@ -63,7 +64,7 @@ def sync_to_remote():
                 existing.date = p.date
             else:
                 new = Product(
-                    external_id=p.external_id,
+                    external_id=external_id,
                     client=p.client,
                     category=p.category,
                     revenue=p.revenue,

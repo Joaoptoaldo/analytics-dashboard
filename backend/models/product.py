@@ -1,4 +1,5 @@
-﻿from sqlalchemy import Boolean, Column, Date, Float, Index, Integer, String, UniqueConstraint
+﻿from sqlalchemy import Boolean, Column, Date, Float, Index, Integer, String, UniqueConstraint, event, func, select
+from sqlalchemy.orm import Session as SessionBase
 
 from backend.db import Base
 
@@ -6,7 +7,7 @@ from backend.db import Base
 class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
-    external_id = Column(Integer, index=True)
+    external_id = Column(String(50), index=True)
     client = Column(String(255))
     category = Column(String(100))
     revenue = Column(Float)
@@ -48,3 +49,17 @@ class Product(Base):
             "status": self.status,
             "date": self.date.strftime("%Y-%m-%d") if self.date else None,
         }
+
+
+@event.listens_for(SessionBase, "before_flush")
+def _assign_product_ids(session, _flush_context, _instances) -> None:
+    pending_products = [obj for obj in session.new if isinstance(obj, Product) and obj.id is None]
+    if not pending_products:
+        return
+
+    max_id = session.execute(select(func.coalesce(func.max(Product.id), 0))).scalar_one()
+    next_id = int(max_id or 0) + 1
+
+    for product in pending_products:
+        product.id = next_id
+        next_id += 1

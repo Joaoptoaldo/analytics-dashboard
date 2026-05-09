@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date as date_type, datetime, timedelta
 from typing import Any, Dict, List, Optional
 import os
 import zlib
@@ -14,6 +14,30 @@ logger = logging.getLogger(__name__)
 
 
 RECENT_DATA_WINDOW_DAYS = 180
+
+
+def _as_date(value: object, fallback: Optional[datetime.date] = None) -> Optional[datetime.date]:
+    if value is None:
+        return fallback
+
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, date_type):
+        return value
+
+    if hasattr(value, "date"):
+        try:
+            candidate = value.date()
+        except Exception:
+            return fallback
+
+        if isinstance(candidate, datetime):
+            return candidate.date()
+        if isinstance(candidate, date_type):
+            return candidate
+
+    return fallback
 
 
 def _parse_iso_date(s: Optional[str]) -> Optional[datetime.date]:
@@ -81,13 +105,11 @@ def _normalize_recent_date(raw_date: Optional[datetime.date], key: int, referenc
     Returns:
         datetime.date: _description_: a data normalizada, que será igual a `raw_date` se esta for válida e recente, ou uma data determinística dentro dos últimos `RECENT_DATA_WINDOW_DAYS` dias caso contrário
     """
-    anchor = reference_date or datetime.now().date()
+    anchor = _as_date(reference_date, datetime.now().date()) or datetime.now().date()
+    raw_date = _as_date(raw_date)
+
     if raw_date is None:
         return _deterministic_recent_date(key, reference_date=anchor)
-
-    # Alguns provedores/consumidores podem entregar datetime; normaliza para date
-    if isinstance(raw_date, datetime):
-        raw_date = raw_date.date()
 
     cutoff = anchor - timedelta(days=RECENT_DATA_WINDOW_DAYS)
     if raw_date < cutoff or raw_date > anchor:
@@ -221,7 +243,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
 
         rows.append(
             {
-                "id": int(item.get("id", 0)),
+                "id": str(int(item.get("id", 0))),
                 "client": (item.get("title") or "")[:255],
                 "category": item.get("category", "Other"),
                 "revenue": revenue,
@@ -242,7 +264,7 @@ def sync_external_products() -> int:
     db = SessionLocal()
     try:
         for r in rows:
-            ext_id = int(r["id"])
+            ext_id = str(int(r["id"]))
             date_obj = None
             if r.get("date"):
                 try:

@@ -92,6 +92,20 @@ URLs locais:
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8000
 
+### Fluxo local com Docker
+
+O repositório também suporta uma validação reproduzível com containers mínimos, sem trocar a arquitetura de produção.
+
+```bash
+docker compose up -d backend
+docker compose --profile frontend up -d frontend
+```
+
+Variáveis esperadas para esse fluxo:
+- `DATABASE_URL` apontando para Neon PostgreSQL real
+- `CORS_ORIGINS` incluindo o frontend local
+- `VITE_API_BASE_URL` apontando para `http://127.0.0.1:8080/api`
+
 ## Endpoints Principais
 
 ### Health

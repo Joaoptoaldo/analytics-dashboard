@@ -35,8 +35,8 @@ ENV GUNICORN_KEEPALIVE=5
 EXPOSE 8080
 
 # Use gunicorn com workers uvicorn para produção
-CMD ["sh", "-c", "gunicorn -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT:-8080} backend.main:app --log-level info --timeout ${GUNICORN_TIMEOUT:-60} --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-30} --keep-alive ${GUNICORN_KEEPALIVE:-5}"]
+CMD ["sh", "-c", "gunicorn -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT:-8080} backend.main:app --log-level info --access-logfile - --error-logfile - --capture-output --timeout ${GUNICORN_TIMEOUT:-60} --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-30} --keep-alive ${GUNICORN_KEEPALIVE:-5}"]
 
 # Healthcheck para o container (ajustar caminho se necessário)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -f http://127.0.0.1:${PORT:-8080}/health/ready || exit 1
+  CMD curl -f http://127.0.0.1:${PORT:-8080}/readiness || exit 1

@@ -37,6 +37,7 @@ ENV = os.getenv("ENV", "production").lower().strip()
 IS_PRODUCTION = ENV == "production"
 IS_DEVELOPMENT = ENV == "development"
 ALLOWED_ENVS = {"development", "production"}
+LOCAL_SIMULATION = os.getenv("LOCAL_SIMULATION", "false").lower().strip() in {"1", "true", "yes"}
 
 # ============================================================================
 # Required Configuration Variables
@@ -171,12 +172,17 @@ class ConfigValidator:
                 return []
 
             localhost_origins = [o for o in cors_origins if "localhost" in o or "127.0.0.1" in o]
-            if localhost_origins:
+            if localhost_origins and not LOCAL_SIMULATION:
                 self.errors.append(
                     f"CORS_ORIGINS contém localhost em PROD: {localhost_origins}. "
                     f"Use apenas domínios de produção."
                 )
                 return []
+
+            if localhost_origins and LOCAL_SIMULATION:
+                self.warnings.append(
+                    f"LOCAL_SIMULATION ativo: permitindo CORS local em PROD-like: {localhost_origins}."
+                )
 
             invalid_format = []
             for origin in cors_origins:
@@ -197,14 +203,19 @@ class ConfigValidator:
                 )
                 return []
 
-            # Em produção, bloquear http:// explicitamente.
+            # Em produção real, bloquear http://; na simulação local, permitir loopback explícito.
             non_https = [o for o in cors_origins if not o.startswith("https://")]
-            if non_https:
+            if non_https and not LOCAL_SIMULATION:
                 self.errors.append(
                     f"CORS_ORIGINS contém URLs sem HTTPS em PROD: {non_https}. "
                     f"Use somente https://."
                 )
                 return []
+
+            if non_https and LOCAL_SIMULATION:
+                self.warnings.append(
+                    f"LOCAL_SIMULATION ativo: permitindo CORS HTTP local em PROD-like: {non_https}."
+                )
 
             # Alertas de inconsistência entre domínios/portas.
             parsed_origins = [urlparse(o) for o in cors_origins]
@@ -259,7 +270,7 @@ class ConfigValidator:
 
     def validate_allow_seed(self) -> bool:
         """
-        ALLOW_SEED controla se dados de seed sobrescrevem database.
+        ALLOW_SEED controla se dados de seed sobrescrevem database. 
         
         PROD: DEVE ser false
         DEV: Pode ser true ou false
@@ -273,6 +284,7 @@ class ConfigValidator:
                 "Pode sobrescrever dados de produção. "
                 "DEVE ser false."
             )
+            
             return False
 
         return allow_seed
@@ -291,9 +303,13 @@ class ConfigValidator:
                     "VITE_API_BASE_URL não configurado em PROD. Backend pode iniciar sem este valor, mas frontend build-time deve definir URL pública da API."
                 )
                 return None
-            if "localhost" in vite_url or "127.0.0.1" in vite_url:
+            if ("localhost" in vite_url or "127.0.0.1" in vite_url) and not LOCAL_SIMULATION:
                 self.warnings.append(
                     "VITE_API_BASE_URL aponta para localhost em PROD. Use a URL pública do backend no build do frontend."
+                )
+            if ("localhost" in vite_url or "127.0.0.1" in vite_url) and LOCAL_SIMULATION:
+                self.warnings.append(
+                    "LOCAL_SIMULATION ativo: permitindo VITE_API_BASE_URL local em PROD-like."
                 )
                 return vite_url
         else:
