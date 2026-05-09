@@ -50,7 +50,9 @@ fly secrets set \
   DATABASE_URL=postgresql://user:password@host:5432/dashboard_prod \
   CORS_ORIGINS=https://seu-frontend.com,https://www.seu-frontend.com \
   EXTERNAL_SYNC_TOKEN=$(head -c 32 /dev/urandom | base64) \
-  ALLOW_SEED=false
+   ALLOW_SEED=false \
+   # IMPORTANT: ALLOW_LOCAL_SYNC NÃO deve ser true em produção
+   # Defina ALLOW_LOCAL_SYNC=false explicitamente para evitar bypass de segurança
 
 # Verificar
 fly secrets list
@@ -291,6 +293,7 @@ fly releases rollback
 - [ ] CORS_ORIGINS configurado para domínio real
 - [ ] ENV=production em ambas plataformas
 - [ ] ALLOW_SEED=false
+ - [ ] ALLOW_LOCAL_SYNC=false (não permitir bypass em produção)
 - [ ] Docker builds sem erros
 - [ ] Health endpoints testados localmente
 - [ ] fly.toml ou render.yaml atualizados

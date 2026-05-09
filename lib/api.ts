@@ -21,6 +21,10 @@ export function getRequiredInternalApiBaseUrl(): string {
     throw new Error('VITE_API_BASE_URL must end with /api')
   }
 
+  if (import.meta.env.DEV) {
+    return '/internal'
+  }
+
   return `${apiBaseUrl.slice(0, -4)}/internal`
 }
 

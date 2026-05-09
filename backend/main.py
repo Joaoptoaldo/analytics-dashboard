@@ -297,7 +297,12 @@ def readiness_check():
         _type_: _description_
     """
     started_at = perf_counter()
-    result = check_database_readiness(max_attempts=3, retry_delay_seconds=0.25, slow_threshold_ms=300.0)
+    readiness_slow_threshold_ms = float(os.getenv("READINESS_SLOW_THRESHOLD_MS", "1200"))
+    result = check_database_readiness(
+        max_attempts=3,
+        retry_delay_seconds=0.25,
+        slow_threshold_ms=readiness_slow_threshold_ms,
+    )
     endpoint_duration_ms = int((perf_counter() - started_at) * 1000)
 
     if result["ready"]:
@@ -368,7 +373,12 @@ def health_ready():
     checks = {}
 
     # 1) Database readiness
-    db_result = check_database_readiness(max_attempts=2, retry_delay_seconds=0.1, slow_threshold_ms=500.0)
+    readiness_slow_threshold_ms = float(os.getenv("READINESS_SLOW_THRESHOLD_MS", "1200"))
+    db_result = check_database_readiness(
+        max_attempts=2,
+        retry_delay_seconds=0.1,
+        slow_threshold_ms=readiness_slow_threshold_ms,
+    )
     checks["database"] = {"ready": bool(db_result.get("ready")), "latency_ms": db_result.get("latency_ms")}
 
     # 2) External dependency quick check (DummyJSON or MARKETSTACK if configured)

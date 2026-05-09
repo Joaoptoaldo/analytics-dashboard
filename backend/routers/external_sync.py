@@ -1,6 +1,7 @@
 ﻿import os
 import time
 import hmac
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Request
@@ -10,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from backend.db import SessionLocal
 from backend.models.sync_state import SyncState
 from backend.services.external import sync_external_products
+from backend.config import IS_DEVELOPMENT, ALLOW_LOCAL_SYNC, EXTERNAL_SYNC_TOKEN
 
 router = APIRouter()
 SYNC_STATE_KEY = "external-products-sync"
@@ -48,7 +50,15 @@ def _enforce_sync_access(request: Request) -> None:
         HTTPException: _description_: se o token de acesso fornecido for inválido ou ausente, ou se o endpoint não estiver configurado (token esperado não definido), uma HTTPException será levantada com o status code apropriado (401 para acesso não autorizado, 500 para endpoint não configurado) e uma mensagem de detalhe explicando a razão da falha de acesso
         HTTPException: _description_: se o token de acesso fornecido for inválido ou ausente, uma HTTPException será levantada com status code 401 e detalhe "Invalid or missing sync token"
     """
-    expected_token = os.getenv("EXTERNAL_SYNC_TOKEN", "").strip()
+    expected_token = EXTERNAL_SYNC_TOKEN or ""
+    env_is_dev = IS_DEVELOPMENT
+    allow_local = bool(ALLOW_LOCAL_SYNC)
+
+    if env_is_dev and allow_local:
+        client_host = _get_client_identifier(request)
+        if client_host in {"127.0.0.1", "::1", "localhost"}:
+            logging.warning("Sync endpoint allowed for local development client (ALLOW_LOCAL_SYNC=%s)", allow_local)
+            return
     
     if not expected_token:
         client_host = None
@@ -62,7 +72,6 @@ def _enforce_sync_access(request: Request) -> None:
             client_host = None
 
         if client_host == "testclient":
-            import logging
             logging.warning("Sync endpoint invoked by TestClient and EXTERNAL_SYNC_TOKEN not set; allowing for test")
             return
 
@@ -93,6 +102,14 @@ def _enforce_sync_rate_limit(request: Request) -> None:
     min_interval_seconds = int(os.getenv("EXTERNAL_SYNC_MIN_INTERVAL_SECONDS", "60"))
     if min_interval_seconds <= 0:
         return
+
+    env_is_dev = IS_DEVELOPMENT
+    allow_local = bool(ALLOW_LOCAL_SYNC)
+    if env_is_dev and allow_local:
+        client_host = _get_client_identifier(request)
+        if client_host in {"127.0.0.1", "::1", "localhost"}:
+            logging.warning("Sync rate limit skipped for local development client (ALLOW_LOCAL_SYNC=%s)", allow_local)
+            return
 
     _ = _get_client_identifier(request)
     db = SessionLocal()

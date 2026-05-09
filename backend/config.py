@@ -320,6 +320,29 @@ class ConfigValidator:
 
         return vite_url if vite_url else None
 
+    def validate_allow_local_sync(self) -> bool:
+        """
+        ALLOW_LOCAL_SYNC controla se chamadas locais podem contornar proteção do endpoint
+
+        PROD: DEVE ser false (não permitir bypass)
+        DEV: pode ser true (útil para desenvolvimento local)
+        """
+        allow_local_str = os.getenv("ALLOW_LOCAL_SYNC", "").strip().lower()
+
+        # Default: true em development, false em production
+        if allow_local_str == "":
+            allow_local = not self.is_prod
+        else:
+            allow_local = allow_local_str in ("1", "true", "yes")
+
+        if self.is_prod and allow_local:
+            self.errors.append(
+                "ALLOW_LOCAL_SYNC=true em PROD é inseguro. Defina ALLOW_LOCAL_SYNC=false em produção."
+            )
+            return False
+
+        return allow_local
+
     def validate(self) -> dict:
         """Executa todas as validações"""
         logger.info(f"[CONFIG] Validando configuração para ENV={self.env}...")
@@ -330,6 +353,7 @@ class ConfigValidator:
             "database_url": self.validate_database_url(),
             "cors_origins": self.validate_cors_origins(),
             "external_sync_token": self.validate_external_sync_token(),
+            "allow_local_sync": self.validate_allow_local_sync(),
             "vite_api_base_url": self.validate_frontend_api_base_url(),
             "allow_seed": self.validate_allow_seed(),
         }
@@ -389,6 +413,7 @@ try:
     EXTERNAL_SYNC_TOKEN = GLOBAL_CONFIG["external_sync_token"]
     ALLOW_SEED = GLOBAL_CONFIG["allow_seed"]
     VITE_API_BASE_URL = GLOBAL_CONFIG.get("vite_api_base_url")
+    ALLOW_LOCAL_SYNC = GLOBAL_CONFIG.get("allow_local_sync", False)
 
 except ConfigError:
     # Se falhar aqui, o módulo não pode ser importado
