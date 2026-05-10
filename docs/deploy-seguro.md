@@ -1,49 +1,66 @@
-# Deploy Seguro
+# Deploy Seguro - Checklist de Segurança
 
 ## Pré-requisitos
 
-- Ambiente com Python 3.11 e Node 20
-- Segredos definidos no provedor (não em arquivo versionado)
-- Banco de dados acessível para a aplicação
+- Python 3.11 e Node 20
+- Segredos definidos NO PROVEDOR (nunca em arquivo)
+- PostgreSQL (Neon) acessível
+- Git limpo (sem credenciais)
 
-## Variáveis obrigatórias
+## Validação local
 
-- VITE_API_BASE_URL
-- VITE_USE_EXTERNAL
-- DATABASE_URL
-- ENV
-- ALLOW_SEED
-- EXTERNAL_SYNC_TOKEN
-- CORS_ORIGINS
-- EXTERNAL_SYNC_MIN_INTERVAL_SECONDS
+```bash
+# Frontend
+pnpm run lint          # 0 errors
+pnpm run build         # Sem warnings críticos
 
-## Validação local antes do deploy
+# Backend
+pip audit             # Sem vulnerabilidades críticas
+DATABASE_URL=sqlite:///./backend.db ENV=development python -c "from backend.main import app; print('OK')"
+```
 
-1. Frontend
-   - npm run lint
-   - npm test -- --watchAll=false
-   - npm run build
-2. Backend
-   - python -m pip_audit -r backend/requirements.txt
-   - DATABASE_URL=sqlite:///./backend.db python -c "from backend.main import app; print(app.title)"
+## Variáveis de Ambiente
 
-## Checklist de segurança
+### Frontend (Vercel)
 
-- .env.example sem segredos reais
-- Sem logs de credenciais (DATABASE_URL, tokens)
-- Endpoint de sync protegido por token interno
-- Rate-limit ativo para sync externo
-- CORS definido explicitamente por domínio
+```
+VITE_API_BASE_URL = https://seu-render-app.onrender.com/api
+```
 
-## Deploy
+### Backend (Render)
 
-1. Publicar build da aplicação
-2. Aplicar variáveis de ambiente no provedor
-3. Subir instância com health check
-4. Validar endpoint crítico: /api/overview
+```
+ENV = production
+DATABASE_URL = (Neon connection string)
+CORS_ORIGINS = https://seu-dominio.com,https://www.seu-dominio.com
+ALLOW_SEED = false
+EXTERNAL_SYNC_MIN_INTERVAL_SECONDS = 300
+```
 
-## Pós-deploy
+## Checklist de Segurança
 
-- Verificar logs de erro e latência dos endpoints
-- Validar sincronização externa manualmente (ambiente controlado)
-- Registrar versão e hash de commit implantado
+**Código:**
+- [ ] Nenhum .env commitado (.gitignore contém `.env*`)
+- [ ] Nenhuma credencial em logs
+- [ ] ESLint: 0 errors
+- [ ] pip audit: sem vulnerabilidades críticas
+
+**Configuração:**
+- [ ] DATABASE_URL aponta para Neon (nunca SQLite em prod)
+- [ ] CORS_ORIGINS limitado aos domínios permitidos
+- [ ] ALLOW_SEED = false
+- [ ] Nenhum token VITE_* compilado no bundle
+
+**Pós-Deploy:**
+- [ ] `GET /health` retorna 200 OK
+- [ ] `GET /readiness` retorna 200 OK
+- [ ] `GET /api/overview` com CORS headers ✓
+- [ ] `GET /api/overview` com CORS headers presente
+- [ ] Latência < 1s para overview
+- [ ] Logs sem credenciais
+
+## Monitoramento
+
+- Render: Health Checks (/health a cada 30s)
+- Vercel: Analytics ativar
+- Verificar logs diariamente na primeira semana

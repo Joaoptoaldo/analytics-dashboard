@@ -1,333 +1,158 @@
-# CHECKLIST DE DEPLOY PRÁTICO
+# Checklist de Deploy Prático
 
-**Status:** **PRONTO PARA DEPLOY**
+**Status:** PRONTO PARA DEPLOY
 
----
-
-## 1. PRÉ-DEPLOY (Executar Antes de Fazer Deploy)
-
-### 1.1 Validar Código
-- [x] Backend completo e testado
-- [x] Config validation implementada (fail-fast)
-- [x] Security headers adicionados
-- [x] CORS configurado corretamente
-- [x] Health endpoints implementados
-- [x] Internal endpoints protegidos com token
-
-### 1.2 Validar Ambiente
-```bash
-# Verificar que nenhum .env foi committado
-git status | grep "\.env"  # Deve estar em .gitignore
-
-# Verificar variáveis de ambiente esperadas
-# DATABASE_URL, CORS_ORIGINS, EXTERNAL_SYNC_TOKEN, ENV
-```
-
-### 1.3 Limpar Artifacts de Teste
-```bash
-rm -f backend_qa.db backend_qa_new.db
-rm -f qa_report.json qa_production_strictness.json
-rm -f seed_qa.py check_db.py
-```
+Stack: Vercel (Frontend) + Render (Backend) + Neon (Database)
 
 ---
 
-## 2. DEPLOY PARA FLY.IO
+## 1. PRÉ-DEPLOY - Validações Locais
 
-### 2.1 Preparar Variáveis de Ambiente
+### 1.1 Código
 
 ```bash
-# Registrar no Fly CLI
-fly auth login
+# Frontend
+pnpm run lint
+# Esperado: 0 errors
 
-# Criar/actualizar app
-fly app list
-fly apps create dashboard-de-analise  # Se novo
+pnpm run build
+# Esperado: built in X.XXs
 
-# Set environment variables
-fly secrets set \
-  ENV=production \
-  DATABASE_URL=postgresql://user:password@host:5432/dashboard_prod \
-  CORS_ORIGINS=https://seu-frontend.com,https://www.seu-frontend.com \
-  EXTERNAL_SYNC_TOKEN=$(head -c 32 /dev/urandom | base64) \
-   ALLOW_SEED=false \
-   # IMPORTANT: ALLOW_LOCAL_SYNC NÃO deve ser true em produção
-   # Defina ALLOW_LOCAL_SYNC=false explicitamente para evitar bypass de segurança
-
-# Verificar
-fly secrets list
+# Backend
+cd backend
+pip audit
+# Esperado: sem vulnerabilidades críticas
 ```
 
-### 2.2 Verificar fly.toml
-
-```toml
-[app]
-primary_region = "gig"  # Seu region preferido
-
-[[services]]
-ports = { handlers = ["http"], port = 8080 }
-processes = ["app"]
-
-[checks.http]
-grace_period = "10s"
-interval = "30s"
-method = "GET"
-path = "/health"
-protocol = "http"
-timeout = "5s"
-type = "http"
-
-[checks.database]
-grace_period = "15s"
-interval = "30s"
-method = "GET"
-path = "/readiness"
-protocol = "http"
-timeout = "10s"
-type = "http"
-```
-
-### 2.3 Deploy
+### 1.2 Git
 
 ```bash
-# Build e deploy
-fly deploy
+# Verificar nenhum .env commitado
+git status | grep -E "\.env"
+# Esperado: nenhuma saída
 
-# Monitorar logs
-fly logs
-
-# Testar endpoints
-curl https://your-app.fly.dev/health
-curl https://your-app.fly.dev/readiness
-curl https://your-app.fly.dev/api/products
+# Verificar .gitignore
+grep "env" .gitignore
+# Esperado: *.env, .env.local, etc.
 ```
 
-### 2.4 Monitoramento Pós-Deploy (Fly.io)
+### 1.3 Limpar Artifacts
 
 ```bash
-# Ver status
-fly status
+# Remover DB's de teste
+rm -f *.db
 
-# Ver logs
-fly logs --follow
+# Remover cache
+rm -rf .pytest_cache __pycache__ node_modules/.cache
 
-# Se houver erro:
-# 1. Verificar logs: fly logs
-# 2. Verificar secrets: fly secrets list
-# 3. Rollback se necessário: fly builds list && fly deploy <BUILD_ID>
+# Remover server.py (foi apenas para teste local)
+rm -f server.py
 ```
+
+### 1.4 Estrutura
+
+- [x] Frontend: src/, components/, lib/, hooks/ presentes
+- [x] Backend: backend/main.py, models/, routers/ presentes
+- [x] Migrations: alembic/ com versions OK
+- [x] Docker: Dockerfile atualizado
+- [x] render.yaml: presente
 
 ---
 
-## 3. DEPLOY PARA RENDER
+## 2. DEPLOY VERCEL (Frontend)
 
-### 3.1 Preparar no Painel Render
-
-1. **Conectar GitHub:**
-   - Go to render.com/dashboard
-   - Connect GitHub account
-   - Select repository
-
-2. **Criar New Service:**
-   - Type: Web Service
-   - Name: dashboard-de-analise
-   - Runtime: Docker
-   - Build Command: `(deixar vazio - usa Dockerfile)`
-   - Start Command: `uvicorn backend.main:app --host 0.0.0.0 --port ${PORT}`
-
-3. **Environment Variables:**
-   ```
-   ENV=production
-   DATABASE_URL=postgresql://user:password@host:5432/dashboard_prod
-   CORS_ORIGINS=https://seu-frontend.com
-   EXTERNAL_SYNC_TOKEN=<gerar token 32+ chars>
-   ALLOW_SEED=false
-   PORT=10000
-   ```
-
-4. **Health Check:**
-   - Path: `/readiness`
-   - Check Interval: 30s
-   - Timeout: 10s
-   - Failure Threshold: 3
-
-5. **Deploy:**
-   - Click "Deploy" button
-   - Monitorar logs em tempo real
-
-### 3.2 Verificar Deploy Render
+### 2.1 Preparar
 
 ```bash
-# Testar após deployment
-curl https://seu-app.onrender.com/health
-curl https://seu-app.onrender.com/readiness
-curl https://seu-app.onrender.com/api/products
-
-# Se erro, verificar:
-# 1. Render Logs tab
-# 2. Environment variables in Settings
-# 3. Build logs
+pnpm run build
+pnpm run preview   # Testar localmente
 ```
 
----
+### 2.2 Conectar
 
-## 4. PÓS-DEPLOY (Ambas Plataformas)
+1. https://vercel.com/new
+2. Importar GitHub
+3. Framework: Vite
+4. Build Command: `pnpm run build`
+5. Output: `dist`
+6. Deploy
 
-### 4.1 Testes Funcionais (24 horas)
+### 2.3 Configurar Variáveis
+
+Vercel → Settings → Environment Variables:
+
+```
+VITE_API_BASE_URL = https://seu-render-app.onrender.com/api
+```
+
+### 2.4 Validar
 
 ```bash
-# Em a forma: substituir YOUR_DOMAIN
-
-# 1. Health check
-curl -i https://YOUR_DOMAIN/health
-# Esperado: 200 OK
-
-# 2. Readiness check
-curl -i https://YOUR_DOMAIN/readiness
-# Esperado: 200 OK
-
-# 3. Test CORS
-curl -H "Origin: https://seu-frontend.com" \
-  -H "Access-Control-Request-Method: GET" \
-  -X OPTIONS https://YOUR_DOMAIN/api/products \
-  -v
-# Esperado: Access-Control-Allow-Origin header present
-
-# 4. List products
-curl https://YOUR_DOMAIN/api/products | jq '.items | length'
-# Esperado: número > 0
-
-# 5. Test internal endpoint (deve falhar sem token)
-curl -X POST https://YOUR_DOMAIN/internal/external-products/sync \
-  -H "x-internal-token: wrong"
-# Esperado: 401 Unauthorized
+curl https://seu-dominio.com/
+# Status: 200 OK
 ```
 
-### 4.2 Monitoramento 24/7
-
-**Ativar em ambas plataformas:**
-
-- [ ] Health check endpoint: `/health`
-- [ ] Readiness check: `/readiness`
-- [ ] Alert se status != 200
-- [ ] Alert se response time > 5s
-- [ ] Alert se CPU > 80%
-- [ ] Alert se Memory > 80%
-
-### 4.3 Logs & Alertas
-
-- Verificar logs diariamente primeira semana
-- Look for:
-  - `ConfigError` messages (nunca deve aparecer em PROD)
-  - `[ERROR]` or `[CRITICAL]` messages
-  - Unusual slowdowns
-  - Database connection issues
-
-### 4.4 Backup & Recovery Plan
-
-1. **Backup Database:**
-   ```bash
-   # Fly.io com Postgres addon
-   fly postgres backup list -a DATABASE_APP_NAME
-   
-   # Render Postgres
-   # Configurar auto-backups no painel Render
-   ```
-
-2. **Recovery Procedure:**
-   ```
-   1. Get latest backup ID
-   2. Restore from backup (via CLI or web)
-   3. Verify /readiness returns 200
-   4. Test APIs manually
-   ```
-
 ---
 
-## 5. TROUBLESHOOTING RÁPIDO
+## 3. DEPLOY RENDER (Backend)
 
-| Problema | Solução |
-|----------|---------|
-| `ConfigError` no startup | Verificar ENV vars: `ENV`, `DATABASE_URL`, `CORS_ORIGINS`, `EXTERNAL_SYNC_TOKEN` |
-| `/readiness` retorna 503 | Database não conectando. Verificar `DATABASE_URL` e credenciais |
-| CORS error no frontend | Verificar `CORS_ORIGINS` matches frontend URL exatamente |
-| 500 Internal Server Error | Verificar logs: `fly logs` ou Render logs tab |
-| Apps crashes immediately | Verificar `ALLOW_SEED=false` em PROD |
-| Sync endpoint 401 | Verificar `EXTERNAL_SYNC_TOKEN` matches em frontend |
+### 3.1 Preparar Neon
 
----
+Acessar https://console.neon.tech:
 
-## 6. ROLLBACK PROCEDURE
+1. Create New Project
+2. Copiar connection string (com pooler)
 
-**Se problemas críticos após deploy:**
+### 3.2 Conectar
 
-### Fly.io Rollback
+1. https://dashboard.render.com/new/web
+2. Conectar GitHub
+3. Runtime: Docker
+4. Deploy
+
+### 3.3 Configurar Variáveis
+
+Render → Environment:
+
+```
+ENV = production
+DATABASE_URL = postgresql://...(Neon connection string)
+CORS_ORIGINS = https://seu-dominio.com,https://www.seu-dominio.com
+ALLOW_SEED = false
+EXTERNAL_SYNC_MIN_INTERVAL_SECONDS = 300
+```
+
+### 3.4 Health Check
+
+Render → Health Check:
+
+```
+Path: /health
+Check Interval: 30s
+Timeout: 5s
+```
+
+### 3.5 Validar
+
 ```bash
-# Ver histórico de builds
-fly builds list
+curl https://seu-render-app.onrender.com/health
+# {status: ok}
 
-# Rollback para build anterior
-fly deploy <BUILD_ID>
+curl https://seu-render-app.onrender.com/readiness
+# {status: ready, database: ok, schema: ok}
 
-# Ou:
-fly releases list
-fly releases rollback
+curl https://seu-render-app.onrender.com/api/overview
+# {total_revenue: X, total_orders: X, ...}
 ```
 
-### Render Rollback
-```
-1. Go to Deployments tab
-2. Click "Deploy" next to previous successful deployment
-3. Confirm
-```
-
-**Estimated rollback time:** < 5 minutos
-
 ---
 
-## 7. CHECKLIST FINAL PRÉ-DEPLOY
+## 4. PÓS-DEPLOY
 
-- [ ] Todos os 26 QA tests passaram
-- [ ] Database URL é PostgreSQL (não SQLite)
-- [ ] EXTERNAL_SYNC_TOKEN gerado e seguro (32+ chars)
-- [ ] CORS_ORIGINS configurado para domínio real
-- [ ] ENV=production em ambas plataformas
-- [ ] ALLOW_SEED=false
- - [ ] ALLOW_LOCAL_SYNC=false (não permitir bypass em produção)
-- [ ] Docker builds sem erros
-- [ ] Health endpoints testados localmente
-- [ ] fly.toml ou render.yaml atualizados
-- [ ] Backup database antes de deploy
-- [ ] Time informado sobre deployment
-- [ ] Monitoring alerts configurados
-
----
-
-## 8. CONTATOS & DOCUMENTAÇÃO
-
-**Documentação:**
-- [QA_FINAL_REPORT.md](QA_FINAL_REPORT.md) - Relatório completo
-- [QA_AUDIT_CONSOLIDADO.json](QA_AUDIT_CONSOLIDADO.json) - Dados estruturados
-- [NEXT_STEPS_DEPLOY.md](NEXT_STEPS_DEPLOY.md) - Próximos passos de deploy
-
-**Scripts Úteis:**
-- `qa_test_fullstack.py` - Rodar testes QA
-- `qa_test_production_validation.py` - Testar strictness
-
----
-
-## 9. SIGN-OFF
-
-| Role | Name | Date | Approval |
-|------|------|------|----------|
-| QA Lead + SRE | Agent | 2026-05-05 | APPROVED |
-| Backend Dev | (You) | _ | _ |
-| DevOps/Infra | (You) | _ | _ |
-
----
-
-**DEPLOYMENT WINDOW:**  OPEN
-
-**NEXT REVIEW:** 24h post-deployment (monitoring check-in)
-
-**SUPPORT:** If issues arise, refer to [QA_FINAL_REPORT.md](QA_FINAL_REPORT.md) troubleshooting section or contact DevOps team.
+- [ ] Frontend carrega
+- [ ] Backend responde
+- [ ] Dashboard exibe dados
+- [ ] Paginação funciona
+- [ ] Filtros funcionam
+- [ ] Logs sem errors
+- [ ] CORS headers presentes

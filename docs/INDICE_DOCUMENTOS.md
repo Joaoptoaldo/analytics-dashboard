@@ -1,29 +1,28 @@
-# Indice de Documentacao
+# Índice de Documentação
 
-Este indice lista apenas documentos operacionais ativos.
+## 📋 Guias Principais
 
-## Guia principal
+| Documento | Propósito |
+|-----------|----------|
+| [README.md](../README.md) | Visão geral e arquitetura |
+| [README-QUICKSTART.md](./README-QUICKSTART.md) | Rodar localmente em 5 min |
+| [next_steps_deploy.md](./next_steps_deploy.md) | **→ COMECE AQUI** para deploy |
+| [deploy_checklist.md](./deploy_checklist.md) | Validações de deploy |
+| [deploy-seguro.md](./deploy-seguro.md) | Segurança e checklist |
 
-- README.md
+## Fluxo Recomendado
 
-## Documentacao em docs/
+1. **Local**: README-QUICKSTART.md
+2. **Validação**: deploy_checklist.md + deploy-seguro.md
+3. **Produção**: next_steps_deploy.md (Vercel + Render + Neon)
 
-- README-QUICKSTART.md
-	- Subida local rapida (frontend + backend) 
-- next_steps_deploy.md
-	- Proximos passos de deploy e validacoes finais
-- deploy_checklist.md
-	- Checklist pre e pos deploy
-- deploy-seguro.md
-	- Baseline de seguranca para deploy
-- runbook-rotacao-credenciais.md
-	- Rotacao de token e credenciais
+## Status Atual
 
-## Artefatos de auditoria e QA
+- Código validado e pronto para deploy
+- Simulação produção local confirmada
+- Migrations automáticas no startup
+- Nenhuma credencial exposta
 
-Relatorios historicos foram movidos para artefatos no diretorio raiz (txt/json) e scripts de teste.
-Use apenas como evidencia historica, nao como fonte de operacao corrente.
-**Auditor:** QA Lead + SRE Agent  
-**Status:** AUDITORIA COMPLETA
+## 📌 Histórico
 
-Pronto para produção! 
+Artifacts de QA/auditoria (`.txt`, `.json`, `.db`) são apenas referência - não use como configuração corrente. 
