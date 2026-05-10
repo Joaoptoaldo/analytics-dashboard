@@ -120,6 +120,13 @@ audit_evidence/*.txt
 audit_evidence/*.log
 
 # Legacy / OS
+vscode/
+.vscode/
+.idea/
+*.iml
+.vscode
+.idea
+*.suo
 .next/
 .DS_Store
 Thumbs.db
