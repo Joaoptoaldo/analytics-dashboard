@@ -76,13 +76,14 @@ audit_*.json
 audit_*.txt
 AUDIT_*.json
 AUDIT_*.txt
-render_simulation*.json
+simulation*.json
 veredito*.txt
 VEREDITO*.txt
 conclusão*.txt
 CONCLUSÃO*.txt
 status*.txt
 STATUS*.txt
+veredito_final*.txt
 
 # logs de aplicação
 *.log
