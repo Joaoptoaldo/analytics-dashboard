@@ -29,8 +29,9 @@ export function getRequiredInternalApiBaseUrl(): string {
 }
 
 export function getOptionalSyncToken(): string | null {
-  const token = import.meta.env.VITE_EXTERNAL_SYNC_TOKEN?.trim()
-  return token || null
+  // Token removed from frontend - sync endpoint must not require client-side token
+  // For security, tokens should only be server-side (Render/backend environment variables)
+  return null
 }
 
 export async function fetchSyncWithToken(url: string, token: string | null): Promise<Response> {

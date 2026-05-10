@@ -23,6 +23,10 @@ RUN pip install -r /app/backend/requirements.txt
 # Copia apenas o código do backend (evita transferir arquivos sensíveis/monorepo extras)
 COPY backend /app/backend
 
+# Copia migração do Alembic - essencial para bootstrap.py executar alembic upgrade head
+COPY alembic.ini /app/alembic.ini
+COPY alembic /app/alembic
+
 # Cria um usuário não-root para rodar a aplicação
 RUN useradd --create-home appuser && chown -R appuser /app
 USER appuser

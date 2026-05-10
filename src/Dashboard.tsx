@@ -191,10 +191,6 @@ export default function Dashboard() {
     filterOptions,
   )
   const isRefetching = isLoading && hasLoadedInitialData
-  const salesTrendXAxisInterval = useMemo(() => {
-    if (salesTimelineData.length <= 6) return 0
-    return Math.max(Math.floor(salesTimelineData.length / 8), 0)
-  }, [salesTimelineData.length])
 
   const formatMoney = (value?: number | null) =>
     new Intl.NumberFormat('pt-BR', {

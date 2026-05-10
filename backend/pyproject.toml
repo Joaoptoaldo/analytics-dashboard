@@ -14,3 +14,16 @@ dependencies = [
     "prometheus-client>=0.16.0",
     "alembic>=1.13.0",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "httpx>=0.24.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
