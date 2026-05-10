@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HTTP server with proxy for /api/* to backend."""
+"""Servidor HTTP para servir arquivos estáticos do diretório dist e proxy para backend em /api/* e /internal/*"""
 import http.server
 import socketserver
 import os
