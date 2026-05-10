@@ -34,8 +34,8 @@ ENV GUNICORN_GRACEFUL_TIMEOUT=30
 ENV GUNICORN_KEEPALIVE=5
 EXPOSE 8080
 
-# Use gunicorn com workers uvicorn para produção
-CMD ["sh", "-c", "gunicorn -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT:-8080} backend.main:app --log-level info --access-logfile - --error-logfile - --capture-output --timeout ${GUNICORN_TIMEOUT:-60} --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-30} --keep-alive ${GUNICORN_KEEPALIVE:-5}"]
+# Bootstrap obrigatório: valida env, executa migrations e só então sobe a API
+CMD ["python", "-m", "backend.bootstrap"]
 
 # Healthcheck para o container (ajustar caminho se necessário)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

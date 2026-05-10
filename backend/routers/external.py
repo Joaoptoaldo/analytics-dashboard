@@ -1,5 +1,4 @@
 ﻿from fastapi import APIRouter, Query
-
 from backend.schemas.products import ProductsResponse
 from backend.services.external import sync_external_products
 from backend.services.products import get_products_service

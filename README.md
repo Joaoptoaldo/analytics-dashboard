@@ -90,7 +90,7 @@ pnpm run dev
 
 URLs locais:
 - Frontend: http://localhost:5173
-- Backend: http://localhost:8000
+- Backend: http://localhost:8080
 
 ### Fluxo local com Docker
 

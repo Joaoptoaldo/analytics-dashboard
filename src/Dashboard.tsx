@@ -436,11 +436,11 @@ export default function Dashboard() {
                       tick={({ x = 0, y = 0, payload }) => {
                         const ty = y + 12
                         const text = String(payload?.value ?? '')
-                        return text ? (
+                        return (
                           <text x={x} y={ty} transform={`rotate(-20 ${x} ${ty})`} textAnchor="end" fontSize={11}>
                             {text}
                           </text>
-                        ) : null
+                        )
                       }}
                     />
                     <YAxis tickFormatter={(value) => formatMoney(Number(value))} />

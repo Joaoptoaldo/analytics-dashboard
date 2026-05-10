@@ -188,23 +188,54 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.window = window_seconds
         self.max_requests = max_requests
-        self.store: dict[str, list[float]] = defaultdict(list)
+        # bounded cache to avoid unbounded memory growth under many distinct clients
+        # TTL equals window_seconds so idle clients are evicted automatically
+        try:
+            from cachetools import TTLCache
+        except Exception:
+            TTLCache = None
+
+        cache_maxsize = int(os.getenv("RATE_LIMIT_CACHE_MAXSIZE", "20000"))
+        if TTLCache:
+            self.store = TTLCache(maxsize=cache_maxsize, ttl=self.window)
+        else:
+            # fallback to bounded dict with manual eviction by key count
+            self.store = {}
+
         self.lock = asyncio.Lock()
 
     async def dispatch(self, request: Request, call_next) -> Response:
         client = request.client.host if request.client else "unknown"
         async with self.lock:
             now = _time.time()
-            bucket = self.store[client]
-            # drop old
             earliest = now - self.window
+
+            # retrieve or create bucket
+            bucket = None
+            try:
+                bucket = self.store.get(client)
+            except Exception:
+                bucket = None
+
+            if bucket is None:
+                bucket = []
+                try:
+                    self.store[client] = bucket
+                except Exception:
+                    # store may be a plain dict without set semantics in some fallback
+                    self.store[client] = bucket
+
+            # evict old timestamps
             while bucket and bucket[0] < earliest:
                 bucket.pop(0)
+
             if len(bucket) >= self.max_requests:
-                # rate limited
                 return JSONResponse(status_code=429, content={"state": "error", "reason": "rate_limited"})
+
             bucket.append(now)
+
         return await call_next(request)
+
 
 # Configure from env (default to high limit to avoid breaking tests)
 try:
@@ -935,4 +966,4 @@ async def get_recent_orders():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
