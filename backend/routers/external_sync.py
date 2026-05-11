@@ -50,7 +50,8 @@ def _enforce_sync_access(request: Request) -> None:
         HTTPException: _description_: se o token de acesso fornecido for inválido ou ausente, ou se o endpoint não estiver configurado (token esperado não definido), uma HTTPException será levantada com o status code apropriado (401 para acesso não autorizado, 500 para endpoint não configurado) e uma mensagem de detalhe explicando a razão da falha de acesso
         HTTPException: _description_: se o token de acesso fornecido for inválido ou ausente, uma HTTPException será levantada com status code 401 e detalhe "Invalid or missing sync token"
     """
-    expected_token = EXTERNAL_SYNC_TOKEN or ""
+    # Read token dynamically to support test environment variable changes
+    expected_token = os.getenv("EXTERNAL_SYNC_TOKEN", "") or ""
     env_is_dev = IS_DEVELOPMENT
     allow_local = bool(ALLOW_LOCAL_SYNC)
 

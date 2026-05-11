@@ -98,6 +98,15 @@ def test_frontend_can_trigger_sync_with_token():
         data = resp.json()
         assert "synced" in data, f"Missing 'synced' in response: {data}"
         print(f"✓ Frontend can trigger sync with token: {data['synced']} products synced")
+        
+        # Cleanup: Remove synced products to avoid contaminating other tests
+        db = SessionLocal()
+        try:
+            from backend.models.product import Product
+            db.query(Product).delete()
+            db.commit()
+        finally:
+            db.close()
     finally:
         os.environ.pop("EXTERNAL_SYNC_TOKEN", None)
 

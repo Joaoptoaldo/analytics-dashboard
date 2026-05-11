@@ -1,6 +1,6 @@
 # Índice de Documentação
 
-## 📋 Guias Principais
+## Guias Principais
 
 | Documento | Propósito |
 |-----------|----------|
@@ -22,6 +22,6 @@
 - Migrations automáticas no startup
 - Nenhuma credencial exposta
 
-## 📌 Histórico
+## Histórico
 
 Artifacts de QA/auditoria (`.txt`, `.json`, `.db`) são apenas referência - não use como configuração corrente. 

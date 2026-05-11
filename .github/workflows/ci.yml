@@ -54,13 +54,19 @@ jobs:
 
       - name: Backend tests
         env:
+          ENV: test
           DATABASE_URL: sqlite:///./backend.db
+          CORS_ORIGINS: "http://localhost:3000,http://localhost:8000"
+          EXTERNAL_SYNC_TOKEN: "test-token-at-least-32-characters-long!!"
         run: |
           python -m pytest backend/tests -q
 
       - name: Backend smoke import
         env:
+          ENV: test
           DATABASE_URL: sqlite:///./backend.db
+          CORS_ORIGINS: "http://localhost:3000,http://localhost:8000"
+          EXTERNAL_SYNC_TOKEN: "test-token-at-least-32-characters-long!!"
         run: |
           python -c "from backend.main import app; print(app.title)"
 

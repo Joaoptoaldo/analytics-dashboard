@@ -36,16 +36,14 @@ def test_vercel_calls_require_token_in_prod(monkeypatch: pytest.MonkeyPatch, ver
     monkeypatch.setattr(external_sync, "ALLOW_LOCAL_SYNC", False)
 
     # Sem token configurado -> 500
-    monkeypatch.setattr(cfg, "EXTERNAL_SYNC_TOKEN", None)
-    monkeypatch.setattr(external_sync, "EXTERNAL_SYNC_TOKEN", None)
+    monkeypatch.delenv("EXTERNAL_SYNC_TOKEN", raising=False)
     req = _build_request(host=vercel_host)
     with pytest.raises(HTTPException) as exc:
         external_sync._enforce_sync_access(req)
     assert exc.value.status_code == 500
 
     # Com token configurado mas cabeçalho inválido -> 401
-    monkeypatch.setattr(cfg, "EXTERNAL_SYNC_TOKEN", "expected-token")
-    monkeypatch.setattr(external_sync, "EXTERNAL_SYNC_TOKEN", "expected-token")
+    monkeypatch.setenv("EXTERNAL_SYNC_TOKEN", "expected-token")
     req = _build_request(headers={"x-internal-token": "wrong"}, host=vercel_host)
     with pytest.raises(HTTPException) as exc2:
         external_sync._enforce_sync_access(req)

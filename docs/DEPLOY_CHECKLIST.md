@@ -2,7 +2,7 @@
 
 **Status:** PRONTO PARA DEPLOY
 
-Stack: Vercel (Frontend) + Render (Backend) + Neon (Database)
+Stack: Vercel (Frontend) + Render (Backend) + Neon PostgreSQL (Database)
 
 ---
 

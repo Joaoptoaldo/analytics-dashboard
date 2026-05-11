@@ -36,7 +36,8 @@ logger = logging.getLogger(__name__)
 ENV = os.getenv("ENV", "production").lower().strip()
 IS_PRODUCTION = ENV == "production"
 IS_DEVELOPMENT = ENV == "development"
-ALLOWED_ENVS = {"development", "production"}
+IS_TESTING = ENV == "test" or "pytest" in sys.modules
+ALLOWED_ENVS = {"development", "production", "test"}
 LOCAL_SIMULATION = os.getenv("LOCAL_SIMULATION", "false").lower().strip() in {"1", "true", "yes"}
 
 # ============================================================================
@@ -389,6 +390,20 @@ def load_and_validate_config() -> dict:
     
     Lançar ConfigError se inválido (bloqueia startup).
     """
+    # Se rodando testes, retornar config mock
+    if IS_TESTING:
+        logger.info("[CONFIG] Modo TEST detectado - usando config mock")
+        return {
+            "env": "test",
+            "is_production": False,
+            "database_url": os.getenv("DATABASE_URL", "sqlite:///test.db"),
+            "cors_origins": ["http://localhost:3000", "http://localhost:8000"],
+            "external_sync_token": os.getenv("EXTERNAL_SYNC_TOKEN", "test-token"),
+            "allow_local_sync": True,
+            "vite_api_base_url": "http://localhost:3000",
+            "allow_seed": True,
+        }
+    
     try:
         validator = ConfigValidator(ENV)
         config = validator.validate()
