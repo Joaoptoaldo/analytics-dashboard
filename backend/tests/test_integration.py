@@ -101,3 +101,15 @@ def test_health_check():
     data = resp.json()
     assert "message" in data
     assert "version" in data
+
+
+def test_health_ready_does_not_require_external_api(monkeypatch):
+    """Validate readiness stays green without external network checks."""
+    monkeypatch.delenv("HEALTHCHECK_EXTERNAL_API", raising=False)
+
+    resp = client.get("/health/ready")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ready"
+    assert data["checks"]["external_api"]["ready"] is True
+    assert data["checks"]["external_api"]["reason"] == "skipped"

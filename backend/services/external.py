@@ -16,6 +16,28 @@ logger = logging.getLogger(__name__)
 RECENT_DATA_WINDOW_DAYS = 180
 
 
+def _test_external_products() -> List[Dict[str, Any]]:
+    """Deterministic fixtures for test/CI environments without external network access."""
+    return [
+        {
+            "id": "1",
+            "client": "Test Product 1",
+            "category": "Test",
+            "revenue": 10.0,
+            "status": "Completed",
+            "date": datetime.now().date().strftime("%Y-%m-%d"),
+        },
+        {
+            "id": "2",
+            "client": "Test Product 2",
+            "category": "Test",
+            "revenue": 20.0,
+            "status": "Processing",
+            "date": datetime.now().date().strftime("%Y-%m-%d"),
+        },
+    ]
+
+
 def _as_date(value: object, fallback: Optional[datetime.date] = None) -> Optional[datetime.date]:
     if value is None:
         return fallback
@@ -127,11 +149,15 @@ def fetch_external_products() -> List[Dict[str, Any]]:
     api_key = os.getenv("MARKETSTACK_API_KEY")
     reference_date = _get_reference_date()
 
+    if os.getenv("ENV", "").lower().strip() == "test":
+        return _test_external_products()
+
     # Marketstack path (se houver api_key)
     if api_key:
         base = os.getenv("MARKETSTACK_BASE_URL", "https://api.marketstack.com/v1/eod")
         symbols = [s.strip().upper() for s in os.getenv("MARKETSTACK_SYMBOLS", "AAPL,MSFT,GOOGL").split(",") if s.strip()]
         rows: List[Dict[str, Any]] = []
+        had_fetch_error = False
         # Prepare optional tracing headers
         try:
             from backend.logging_config import get_trace_id, get_span_id
@@ -163,6 +189,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
                     date_val = None
             except Exception as exc:
                 logger.warning("[EXTERNAL] Erro ao consultar Marketstack para %s: %s", sym, exc)
+                had_fetch_error = True
                 price = 0.0
                 date_val = None
 
@@ -180,9 +207,12 @@ def fetch_external_products() -> List[Dict[str, Any]]:
                     "date": date_val.strftime("%Y-%m-%d") if date_val else None,
                 }
             )
+        if had_fetch_error and not rows:
+            raise RuntimeError("[EXTERNAL] Falha ao consultar Marketstack")
         return rows
 
     # Fallback: DummyJSON (comportamento legado)
+    had_fetch_error = False
     try:
         # attach optional trace headers
         try:
@@ -203,6 +233,7 @@ def fetch_external_products() -> List[Dict[str, Any]]:
         products = data.get("products", [])
     except Exception as exc:
         logger.warning("[EXTERNAL] Erro ao consultar DummyJSON: %s", exc)
+        had_fetch_error = True
         products = []
 
     statuses = ["Completed", "Processing", "Shipped", "Pending"]
@@ -251,6 +282,8 @@ def fetch_external_products() -> List[Dict[str, Any]]:
                 "date": date_val.strftime("%Y-%m-%d") if date_val else None,
             }
         )
+    if had_fetch_error and not rows:
+        raise RuntimeError("[EXTERNAL] Falha ao consultar DummyJSON")
     return rows
 
 

@@ -399,7 +399,6 @@ def readiness_check():
 def health_ready():
     """Readiness probe: verifica banco, dependências externas críticas e variáveis essenciais."""
     from datetime import datetime
-    import time
     start = perf_counter()
 
     checks = {}
@@ -413,27 +412,32 @@ def health_ready():
     )
     checks["database"] = {"ready": bool(db_result.get("ready")), "latency_ms": db_result.get("latency_ms")}
 
-    # 2) External dependency quick check (DummyJSON or MARKETSTACK if configured)
+    # 2) External dependency check is opt-in only.
+    # Readiness must not flap because an upstream API is slow or unavailable.
     external_ok = True
-    external_reason = None
-    try:
-        import requests
-        market_key = os.getenv("MARKETSTACK_API_KEY", "").strip()
-        if market_key:
-            url = os.getenv("MARKETSTACK_BASE_URL", "https://api.marketstack.com/v1/eod")
-            resp = requests.get(url, params={"access_key": market_key}, timeout=2)
-            external_ok = resp.status_code == 200
-            if not external_ok:
-                external_reason = f"status_{resp.status_code}"
-        else:
-            url = os.getenv("DUMMYJSON_URL", "https://dummyjson.com/products")
-            resp = requests.head(url, timeout=2)
-            external_ok = resp.status_code < 400
-            if not external_ok:
-                external_reason = f"status_{resp.status_code}"
-    except Exception as exc:
+    external_reason = "skipped"
+    if os.getenv("HEALTHCHECK_EXTERNAL_API", "false").lower() in {"1", "true", "yes"}:
         external_ok = False
-        external_reason = str(exc.__class__.__name__)
+        external_reason = None
+        try:
+            import requests
+
+            market_key = os.getenv("MARKETSTACK_API_KEY", "").strip()
+            if market_key:
+                url = os.getenv("MARKETSTACK_BASE_URL", "https://api.marketstack.com/v1/eod")
+                resp = requests.get(url, params={"access_key": market_key}, timeout=2)
+                external_ok = resp.status_code == 200
+                if not external_ok:
+                    external_reason = f"status_{resp.status_code}"
+            else:
+                url = os.getenv("DUMMYJSON_URL", "https://dummyjson.com/products")
+                resp = requests.head(url, timeout=2)
+                external_ok = resp.status_code < 400
+                if not external_ok:
+                    external_reason = f"status_{resp.status_code}"
+        except Exception as exc:
+            external_ok = False
+            external_reason = str(exc.__class__.__name__)
 
     checks["external_api"] = {"ready": external_ok, "reason": external_reason}
 
