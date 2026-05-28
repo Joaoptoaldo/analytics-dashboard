@@ -8,11 +8,11 @@ O backend entrega metricas agregadas, filtros e listagem paginada de produtos. O
 
 - Frontend: React 19 + Vite + TypeScript, em src/, app/, components/, hooks/ e lib/
 - Backend: FastAPI + SQLAlchemy, em backend/
-- Banco: SQLite para desenvolvimento local e PostgreSQL em producao (obrigatorio quando ENV=production)
+- Banco: SQLite para desenvolvimento local e PostgreSQL/Neon em producao e simulacao production-like (obrigatorio quando ENV=production)
 - Integracao externa: sincronizacao de produtos por endpoint interno protegido por token
 
 Fluxo:
-1. Frontend chama VITE_API_BASE_URL (deve terminar com /api).
+1. Frontend chama VITE_API_BASE_URL (deve terminar com /api). Em preview local com proxy, a app pode usar /api na mesma origem.
 2. Backend valida configuracao no startup (fail-fast).
 3. Endpoints /api/* retornam dados para dashboard.
 4. Endpoint /internal/external-products/sync executa sincronizacao externa com autenticacao por cabecalho x-internal-token.
@@ -20,7 +20,7 @@ Fluxo:
 ## Requisitos
 
 - Node.js 18+
-- Python 3.11+
+- Python 3.13.13+
 - pnpm (ou npm)
 
 ## Variaveis de Ambiente
@@ -45,12 +45,12 @@ Exemplo local:
 
 ```env
 # frontend/.env.local
-VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_BASE_URL=/api
 
 # backend/.env.local
 ENV=development
 DATABASE_URL=sqlite:///./backend.db
-CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:4175,http://127.0.0.1:4175
 ALLOW_SEED=false
 EXTERNAL_SYNC_TOKEN=dev-token-no-validation
 EXTERNAL_SYNC_MIN_INTERVAL_SECONDS=60
@@ -78,7 +78,7 @@ pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-4. Subir frontend
+4. Subir frontend em modo dev
 
 ```bash
 pnpm run dev
@@ -87,6 +87,23 @@ pnpm run dev
 URLs locais:
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8000
+
+### Simulacao production-like local
+
+Para reproduzir Vercel + Render com Neon em ambiente local:
+
+```bash
+# backend em production-like
+$env:ENV='production'; $env:LOCAL_SIMULATION='true'; $env:PORT='8080'; $env:DATABASE_URL='postgresql://...Neon...?sslmode=require'; python -m backend.bootstrap
+
+# frontend em preview com proxy local
+pnpm run build
+pnpm run preview --host 127.0.0.1 --port 4175
+```
+
+Portas dessa simulacao:
+- Frontend preview: http://127.0.0.1:4175
+- Backend production-like: http://127.0.0.1:8080
 
 ### Fluxo local com Docker
 
@@ -100,7 +117,7 @@ docker compose --profile frontend up -d frontend
 Variáveis esperadas para esse fluxo:
 - `DATABASE_URL` apontando para Neon PostgreSQL real
 - `CORS_ORIGINS` incluindo o frontend local
-- `VITE_API_BASE_URL` apontando para `http://127.0.0.1:8000/api`
+- `VITE_API_BASE_URL` pode ficar em `/api` no preview local com proxy ou em `http://127.0.0.1:8080/api` quando o frontend for servido sem proxy
 
 ## Endpoints Principais
 

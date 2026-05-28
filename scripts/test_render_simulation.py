@@ -37,13 +37,13 @@ class RenderSimulationTest:
                 content = f.read()
             
             # Check key elements
-            has_python = "python:3.11" in content
+            has_python = "python:3.13.13" in content
             has_workdir = "WORKDIR /app" in content
             has_cmd = "CMD" in content
             has_port = "EXPOSE 8080" in content or "8080" in content
             has_env_port = "${PORT:-8080}" in content
             
-            self.test("Dockerfile uses Python 3.11", has_python, "Base image correct")
+            self.test("Dockerfile uses Python 3.13.13", has_python, "Base image correct")
             self.test("Dockerfile sets WORKDIR", has_workdir, "Working directory set")
             self.test("Dockerfile exposes port", has_port, "Port 8080 exposed")
             self.test("Dockerfile supports dynamic PORT", has_env_port, "PORT env variable supported")
@@ -60,7 +60,7 @@ class RenderSimulationTest:
         # Note: Using production-valid values (no localhost)
         render_env = {
             "ENV": "production",
-            "DATABASE_URL": "postgresql://postgres:password@db.example.com:5432/dashboard_render",
+            "DATABASE_URL": "postgresql://postgres:password@db.example.com:5432/dashboard_render?sslmode=require",
             "CORS_ORIGINS": "https://dashboard.example.com,https://www.dashboard.example.com",
             "EXTERNAL_SYNC_TOKEN": "render_token_32chars_1234567890abcd",
             "ALLOW_SEED": "false",

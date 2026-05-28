@@ -2,7 +2,7 @@
 
 ## Pré-requisitos
 
-- Python 3.11 e Node 20
+- Python 3.13.13 e Node 20
 - Segredos definidos NO PROVEDOR (nunca em arquivo)
 - PostgreSQL (Neon) acessível
 - Git limpo (sem credenciais)
@@ -13,6 +13,9 @@
 # Frontend
 pnpm run lint          # 0 errors
 pnpm run build         # Sem warnings críticos
+
+# Simulação production-like local
+pnpm run preview --host 127.0.0.1 --port 4175
 
 # Backend
 pip audit             # Sem vulnerabilidades críticas
@@ -27,6 +30,8 @@ DATABASE_URL=sqlite:///./backend.db ENV=development python -c "from backend.main
 VITE_API_BASE_URL = https://seu-render-app.onrender.com/api
 ```
 
+Para preview local com proxy, `VITE_API_BASE_URL` pode ser `/api`.
+
 ### Backend (Render)
 
 ```
@@ -36,6 +41,8 @@ CORS_ORIGINS = https://seu-dominio.com,https://www.seu-dominio.com
 ALLOW_SEED = false
 EXTERNAL_SYNC_MIN_INTERVAL_SECONDS = 300
 ```
+
+Na simulação local production-like, o backend roda em `127.0.0.1:8080` e o frontend em `127.0.0.1:4175`.
 
 ## Checklist de Segurança
 

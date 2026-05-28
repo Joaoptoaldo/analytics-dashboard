@@ -7,14 +7,14 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'http://127.0.0.1:8000',
-      '/internal': 'http://127.0.0.1:8000',
+      '/api': 'http://127.0.0.1:8080',
+      '/internal': 'http://127.0.0.1:8080',
     },
   },
   preview: {
     proxy: {
-      '/api': 'http://127.0.0.1:8000',
-      '/internal': 'http://127.0.0.1:8000',
+      '/api': 'http://127.0.0.1:8080',
+      '/internal': 'http://127.0.0.1:8080',
     },
   },
   resolve: {
