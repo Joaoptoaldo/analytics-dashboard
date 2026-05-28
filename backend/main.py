@@ -314,10 +314,10 @@ def health_check():
 @app.get("/health/live")
 def health_live():
     """Liveness probe: apenas confirma que a aplicação responde."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     return {
         "status": "alive",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
 
 
@@ -398,7 +398,7 @@ def readiness_check():
 @app.get('/health/ready')
 def health_ready():
     """Readiness probe: verifica banco, dependências externas críticas e variáveis essenciais."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     start = perf_counter()
 
     checks = {}
@@ -452,7 +452,7 @@ def health_ready():
 
     payload = {
         "status": "ready" if overall_ok else "not_ready",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "checks": checks,
         "duration_ms": duration_ms,
     }
