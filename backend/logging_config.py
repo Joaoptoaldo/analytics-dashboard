@@ -1,7 +1,7 @@
 import logging
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import contextvars
 
 # Context variables para propagar por async tasks
@@ -23,7 +23,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record):
         # Base fields
         payload = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -50,7 +50,7 @@ class JSONFormatter(logging.Formatter):
             return json.dumps(payload, default=str, ensure_ascii=False)
         except Exception:
             # Fallback to simple message on serialization error
-            return json.dumps({"timestamp": datetime.utcnow().isoformat()+"Z", "level": "ERROR", "message": "log_serialize_error"})
+            return json.dumps({"timestamp": datetime.now(timezone.utc).isoformat()+"Z", "level": "ERROR", "message": "log_serialize_error"})
 
 
 def configure_logging():

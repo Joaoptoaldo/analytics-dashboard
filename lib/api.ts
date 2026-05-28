@@ -11,6 +11,14 @@ export function getRequiredApiBaseUrl(): string {
     throw new Error('VITE_API_BASE_URL is not defined')
   }
 
+  if (typeof window !== 'undefined') {
+    const isLocalFrontend = /^localhost$|^127\.0\.0\.1$/i.test(window.location.hostname)
+
+    if (isLocalFrontend && !window.location.port.includes('8080')) {
+      return '/api'
+    }
+  }
+
   return apiBaseUrl
 }
 

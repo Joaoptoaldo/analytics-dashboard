@@ -5,15 +5,15 @@
 ## 1. CONFIGURAÇÃO DO AMBIENTE
 
 ### Servidor Frontend
-- **URL:** http://127.0.0.1:5000
-- **Build:** Vite 6.4.2 compilado com VITE_API_BASE_URL=http://127.0.0.1:8000/api
+- **URL:** http://127.0.0.1:4175
+- **Build:** Vite 6.4.2 compilado para preview local com proxy /api
 - **Arquivos:** dist/ com 852KB JS, 115KB CSS
-- **Servidor:** Python HTTP simples (simula Vercel)
+- **Servidor:** Vite preview (simula Vercel)
 
 ### Servidor Backend  
-- **URL:** http://127.0.0.1:8000
+- **URL:** http://127.0.0.1:8080
 - **Framework:** FastAPI 0.109.1
-- **Uvicorn:** 127.0.0.1:8000
+- **Uvicorn/Gunicorn:** 127.0.0.1:8080
 - **Banco:** PostgreSQL Neon (connection pool)
 - **Migrations:** Alembic 1 revision (79050fa926a5_initial_schema)
 
@@ -32,12 +32,12 @@
 - [x] CSS compilado (115.65KB → 17.99KB gzip)
 - [x] JavaScript bundled (852.64KB → 249.81KB gzip)
 - [x] Sem erros de sintaxe (ESLint: 0 errors)
-- [x] URL absoluta da API compilada no bundle
+- [x] Frontend consumindo a API via proxy local em preview
 
 ### Backend Health
 - Health endpoint: **200 OK** `{status: ok}`
 - Readiness endpoint: **200 OK** (database: ok, latency: 924ms)
-- CORS headers: **200 OK** com `access-control-allow-origin: http://127.0.0.1:5000`
+- CORS headers: **200 OK** com `access-control-allow-origin: http://127.0.0.1:4175`
 
 ### Integração Frontend ↔ Backend
 - Requisições CORS: **Funcionando**
@@ -134,7 +134,7 @@ Range: R$ 0 a R$ 38.000
 
 ### Vercel (Frontend)
 - [x] Build artifact (dist/) pronto
-- [x] VITE_API_BASE_URL pode ser injetada via env var
+- [x] VITE_API_BASE_URL pode ser injetada via env var ou deixada em `/api` no preview local
 - [x] Nenhuma dependência local
 
 ### Render (Backend)
@@ -229,5 +229,5 @@ Range: R$ 0 a R$ 38.000
 
 ---
 
-**Gerado em:** 10/05/2026 17:16 UTC
-**Ambiente:** Windows 11 | Node 20.14 | Python 3.11 | PostgreSQL 16
+**Gerado em:** 28/05/2026 21:55 UTC
+**Ambiente:** Windows 11 | Node 20.14 | Python 3.13.13 | PostgreSQL 16

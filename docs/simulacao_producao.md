@@ -92,3 +92,10 @@ Status: pronto para deploy de simulacao (nao definitivo), com:
 3. Executar script de validacao apontando para URLs publicas e coletar logs reais de provider.
 4. Revalidar CORS com dominio final do Vercel.
 5. Ajustar thresholds de readiness conforme latencia observada em producao.
+
+## Simulacao local alinhada
+
+- Frontend preview: `http://127.0.0.1:4175`
+- Backend production-like: `http://127.0.0.1:8080`
+- Backend usa Neon com `sslmode=require`
+- Frontend local usa proxy `/api` no preview

@@ -1,8 +1,8 @@
-﻿import os
+import os
 import time
 import hmac
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import or_
@@ -115,7 +115,7 @@ def _enforce_sync_rate_limit(request: Request) -> None:
     _ = _get_client_identifier(request)
     db = SessionLocal()
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         cutoff = now - timedelta(seconds=min_interval_seconds)
 
         for _attempt in range(2):

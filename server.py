@@ -8,7 +8,7 @@ import urllib.request
 import json
 
 DIST_DIR = os.path.join(os.path.dirname(__file__), 'dist')
-BACKEND_URL = 'http://127.0.0.1:8000'
+BACKEND_URL = 'http://127.0.0.1:8080'
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):

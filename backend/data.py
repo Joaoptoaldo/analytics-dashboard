@@ -3,37 +3,38 @@ from typing import Any
 
 CATEGORIES = ["groceries", "home-decoration", "kitchen-accessories", "mens-watches", "beauty"]
 STATUSES = ["Completed", "Processing", "Shipped", "Pending"]
-# lista 30 clientes para geração de dados realistas
-CLIENTS = [ 
-    "Alfa Tech",
-    "Beta Commerce",
-    "NovaBank",
-    "EduPlus",
-    "VidaCare",
-    "Delta Systems",
-    "Prime Retail",
-    "CloudOps",
-    "SmartLabs",
-    "Pulse Group",
-    "EcoSolutions",
-    "NextGen",
-    "Bright Future",
-    "Global Ventures",
-    "UrbanStyle",
-    "HealthFirst",
-    "Apex Innovations",
-    "Zenith Corp",
-    "Vertex Solutions",
-    "Synergy Partners",
-    "Momentum Inc",
-    "Infinity Group",
-    "Pioneer Tech",
-    "Summit Enterprises",
-    "Visionary Labs",
-    "Quantum Solutions",
-    "Nexus Group",
-    "Eclipse Systems",
-    "Radiant Ventures",
+# lista de clientes reais para geração de dados de seed
+CLIENTS = [
+    "Petrobras",
+    "Vale",
+    "Itaú Unibanco",
+    "Bradesco",
+    "Banco do Brasil",
+    "Ambev",
+    "Natura",
+    "Magazine Luiza",
+    "RaiaDrogasil",
+    "Weg",
+    "B3",
+    "Suzano",
+    "Vivo",
+    "TIM",
+    "Claro",
+    "Mercado Livre",
+    "Grupo Pão de Açúcar",
+    "Lojas Renner",
+    "Localiza",
+    "Rumo",
+    "JBS",
+    "Ultrapar",
+    "Equatorial Energia",
+    "Eletrobras",
+    "Gerdau",
+    "CSN",
+    "Klabin",
+    "Embraer",
+    "Santander Brasil",
+    "Copel",
 ]
 
 
@@ -94,16 +95,13 @@ def _build_seed_data() -> list[dict[str, Any]]:
     """
     import random
     
-    # Seed determinístico para reprodutibilidade
     random.seed(42)
     
     data = []
     base_date = datetime(2024, 1, 1)
     
-    # Gerar 100 registros distribuídos ao longo de 12 meses
     for i in range(100):
-        # Data distribuída em 12 meses (aproximadamente 8-9 por mês)
-        days_offset = (i * 3) % 365  # Distribui ao longo do ano
+        days_offset = (i * 3) % 365  
         record_date = base_date + timedelta(days=days_offset)
         
         data.append({
