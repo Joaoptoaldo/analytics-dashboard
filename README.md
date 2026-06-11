@@ -1,5 +1,8 @@
 ﻿# Dashboard de Analise
 
+![Screenshot do Sistema](docs/screenshots/screenshot.jpeg)
+
+
 Aplicacao full-stack para analise de indicadores de vendas com frontend em React/Vite e API em FastAPI.
 
 O backend entrega metricas agregadas, filtros e listagem paginada de produtos. O frontend consome esses endpoints para montar dashboards, tabelas e graficos.
